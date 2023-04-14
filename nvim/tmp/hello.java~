@@ -1,0 +1,13 @@
+public class hello {
+	public static void main(String[] args) {
+		System.out.println("Hello world");
+		Parser encoder = new Parser();
+		Data test = new Data();
+		test.setUser("anthony");
+		test.setMsg("Hello world");
+		test.setHeader(Header.br);
+		String output = encoder.encode(test);
+		System.out.println(output);
+		Data msgRt = encoder.decode(output);
+	}
+}

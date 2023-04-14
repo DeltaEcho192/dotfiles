@@ -1,0 +1,6 @@
+public class Data {
+	int header;
+	String hostname;
+	String[] hostnames;
+	ArrayList<String> userlist;
+}

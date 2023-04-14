@@ -1,0 +1,192 @@
+import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.net.*;
+import java.io.*;
+import java.util.ArrayList;
+
+/**
+ * The ServerClient class is the main class to handle each of the new connections
+ * made to the server by clients. It implements multithreading so each user starts
+ * a new thread which handles all the input and output streams. It also handles 
+ * all the messages recieved and applies the appropriate logic.
+ *
+ * @author 25041134 Anthony Durrer
+ * */
+public class ServerClient extends Thread {
+    Socket serverSocket;
+    BufferedReader message_In;
+    PrintWriter message_Out;
+    int client_id_int;
+	private boolean isConnected;
+	private String alias;
+	private ArrayList<ServerClient> threadList;
+
+	/**
+	 * ServerClient is a setting function which declares and sets all the relevent 
+	 * variables need by the thread. It also is the container for the socket created.
+	 * This is called when a new connection is made.
+	 *
+	 * @param inSocket The socket created by the new user.
+	 * @param isConnected Boolean to set the loop and check if the user is still connected.
+	 * @param counter An arbitrary counter used for when a user has not enter an alias yet.
+	 * @param alias This is the name that the user has defined for himself.
+	 * @param threads This is the ArrayList containing all the other threads used for sending out messages.
+	 *
+	 * */
+    ServerClient(Socket inSocket, boolean isConnected, int counter, String alias, ArrayList<ServerClient> threads) {
+        this.serverSocket = inSocket;
+		this.isConnected = isConnected;
+        client_id_int = counter;
+		this.alias = alias;
+		this.threadList = threads;
+    }
+	
+	/*
+	 * Main run function called on thread start and handles all the creation of 
+	 * input and output stream. After this it creates a loop based on the connection.
+	 * It then handles all the logic of incoming messages.
+	 * */
+	@Override
+    public void run() {
+        try {
+			message_In = new BufferedReader(new InputStreamReader(serverSocket.getInputStream()));
+			message_Out = new PrintWriter(serverSocket.getOutputStream(), true);
+			String clientMessage = "";
+			while (isConnected) {
+				clientMessage = message_In.readLine();
+				if (clientMessage != null) {
+					// Using decoder to turn string stream into a Data Class.
+					Data incoming = ParserServer.decode(clientMessage.toString());
+					//Check if client unexpectly dies a stream of null will follow
+					//allowing for the correct exit of the client.
+					if (incoming.type != null) {
+						switch (incoming.getHeader()) {
+							case actUr:
+								System.out.println("A user list request has been made");
+								String[] userList = collectUsers();
+								Data outgoing = new Data();
+								outgoing.setHeader(Header.actUs);
+								outgoing.setUsers(userList);
+								String outMessage = ParserServer.encode(outgoing);
+								if (outMessage != null) {
+									message_Out.println(outMessage);
+								}
+								break;
+							case disc:
+								System.out.println("User is attempting a disconnect");
+								isConnected = false;
+								break;
+							case cnn:
+								alias = incoming.getUser();
+								userList = collectUsers();
+								outgoing = new Data();
+								outgoing.setHeader(Header.actUs);
+								outgoing.setUsers(userList);
+								outMessage = ParserServer.encode(outgoing);
+								if (outMessage != null) {
+									sendMessage(outMessage);
+								}
+								System.out.println("New user is connecting to server: " + alias);
+								break;
+							case wsp:
+								System.out.println("Sending Whisper to a user");
+								System.out.println("User sending: " + incoming.getUser());
+								System.out.println("recipent: " + incoming.getRecipent());
+								System.out.println("Messsage: " + incoming.getMsg());
+								sendWhisper(clientMessage, incoming.getRecipent());
+								break;
+							case br:
+								System.out.println("Sending through a broadcast");
+								sendMessage(clientMessage);
+								break;
+
+						}
+					}
+				} else {
+					isConnected = false;
+					message_In.close();
+					message_Out.close();
+					serverSocket.close();
+				}
+            }
+        } catch (Exception ex) {
+            System.out.println(ex);
+        } finally {
+			// Handles the exit of a user. Removes from the threadlist, then creates
+			// a user list message for other users with the new active user list 
+			// which is broadcast to all other active users showing the disconnection
+			// Then the thread completes and dies.
+			int i;
+			for (i = 0; i < threadList.size(); i++) {
+				ServerClient tester = threadList.get(i);
+				if (tester.client_id_int == client_id_int) {
+					threadList.remove(i);	
+				}
+			}
+			String[] userList = collectUsers();
+			Data outgoing = new Data();
+			outgoing.setHeader(Header.actUs);
+			outgoing.setUsers(userList);
+			String outMessage = ParserServer.encode(outgoing);
+			if (outMessage != null) {
+				sendMessage(outMessage);
+			}
+            System.out.println("Client - " + alias + " exit!!!");
+        }
+    }
+
+	/**
+	 * collectUsers this method iterates through the active user list and compiles
+	 * them into a String array to be sent to all users.
+	 *
+	 * @return String[] This contains the array of all users.
+	 * **/
+	public String[] collectUsers() {
+		System.out.println("Collecting users");
+		String[] users = new String[threadList.size()];
+		int x = 0;
+		for (ServerClient i : threadList) {
+			users[x] = i.alias;	
+			x++;
+		}
+		return users;
+	}
+
+	/**
+	 * sendMessage is a function iterating through all the threads and sending 
+	 * the message to all users. 
+	 *
+	 * @param message String containing the encoded string to be sent to all users.
+	 * **/
+	public void sendMessage(String message) {
+		System.out.println("Printing Message to everyone");
+		for (ServerClient i : threadList) {
+			System.out.println(i.alias);
+			i.message_Out.println(message);
+			i.message_Out.flush();
+		}
+	}
+
+	/**
+	 * sendWhisper is a function which iterates through the user list and finds
+	 * the matching alias specified and sends only that user the encoded message.
+	 *
+	 * @param message The encoded message to be sent to the user.
+	 * @param recipent The alias of the recipent who the message is destined for.
+	 * */
+	public void sendWhisper(String message, String recipent) {
+		System.out.println("Sending a Whisper through Server");
+		for (ServerClient i : threadList) {
+			System.out.println(i.alias);
+			if (i.alias.equals(recipent)) {
+				i.message_Out.println(message);
+			}
+		}
+	}
+}

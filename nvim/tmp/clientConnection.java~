@@ -1,0 +1,242 @@
+import java.io.*;
+import java.net.*;
+import java.util.*;
+
+// Client class
+class clientConnection {
+
+	private Socket clientSocket;
+	private PrintWriter writer;
+	private BufferedReader reader;
+	private boolean isConnected;
+	private String userName;
+	public String username = "Testing programme";
+	public static int counter = 1;
+	/*
+	 * class serverInputHandler
+	 * class implements the thread for the communication packets from the server
+	 * through to the client
+	 * has overide method that is used for execute the thread
+	 */
+	private class serverInputHandler implements Runnable {
+		private Socket socket;
+		private boolean isConnected;
+		private Object serverCommuncation;
+
+		public serverInputHandler(Socket socket, boolean isConnected) {
+			this.socket = socket;
+			this.isConnected = isConnected;
+		}
+
+		@Override
+		public void run() {
+			try {
+				BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+				while (isConnected) {
+					serverCommuncation = reader.readLine();
+					if (serverCommuncation != null) {
+						//System.out.println(serverCommuncation.toString());
+						Data incomingTransmission = Parser.decode(serverCommuncation.toString());
+						if (incomingTransmission.type != null)
+							switch (incomingTransmission.getHeader()) {
+								case actUs:
+									System.out.println("The server send the following updated names list");
+									for(String s :incomingTransmission.getUsers()) {
+										System.out.println(s);
+									}
+									break;
+								case disc:
+									System.out.println("The following User disconnected from the Server");
+									System.out.println(incomingTransmission.getUser());
+									break;
+								case cnn:
+									System.out.println("Users: " + userName + "wants to connect to the server");
+									break;
+								case wsp:
+									System.out.println("The user :" + incomingTransmission.getUser()
+											+ " send the following whisper");
+									System.out.println(
+											incomingTransmission.getUser() + ":\n" + incomingTransmission.getMsg());
+									break;
+								case br:
+									if (incomingTransmission.getUsers() == null) {
+										//System.out
+										//		.println("User wants to send the message to all users that are active");
+										//System.out.println("The sender is: " + incomingTransmission.getUser());
+										//System.out.println(incomingTransmission.getUser()
+										//		+ " sent the following message:\n" + incomingTransmission.getMsg());
+									} else {
+										System.out.println("Sending list of active clients");
+										System.out.println("The active users are:");
+										for (String s : incomingTransmission.getUsers()) {
+											System.out.println(s);
+										}
+									}
+									break;
+							}
+					}
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	private class clientOutputHandler implements Runnable {
+		private Socket socket;
+		private boolean isConnected;
+
+		public clientOutputHandler(Socket socket, boolean isConnected) {
+			this.socket = socket;
+			this.isConnected = isConnected;
+		}
+
+		@Override
+		public void run() {
+			try {
+				String random = "Hello there";
+				String User;
+				String message;
+				String type;
+				PrintWriter writer = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()), true);
+				Scanner scLine = new Scanner(System.in);
+				System.out.println("Please enter your name");
+				User = scLine.nextLine();
+				Data newUser = new Data();
+				newUser.setHeader(Header.cnn);
+				newUser.setUser(User);
+				try{
+					writer.println(Parser.encode(newUser));
+				} catch(Exception e) {
+					e.printStackTrace();
+				}
+				int outCounter = 0;
+				while (isConnected) {
+					/*System.out.println("Please choose an option\n"+
+					"0 for active user request\n"+
+					"1 for broadcast\n"+
+					"3 for disconnect"+
+					"4 for whisper");*/
+					
+					Header operationToComplete = Header.actUr;
+					//int r = Integer.parseInt(scLine.nextLine());
+					int r = 1;
+					switch (r) {
+						case 0:
+							operationToComplete = Header.actUr;
+							break;
+						case 1:
+							operationToComplete = Header.br;
+							break;
+						case 2:
+							operationToComplete = Header.cnn;
+							break;
+						case 3:
+							operationToComplete = Header.disc;
+							break;
+						case 4:
+							operationToComplete = Header.wsp;
+							break;
+					}
+					/* TODO - get input from the GUI on the operation to complete */
+					Data transmission = new Data();
+					transmission.setHeader(operationToComplete);
+					switch (operationToComplete) {
+						case actUr:
+							break;
+						case disc:
+							transmission.setUser(User);
+							/*
+							 * get new updated list of users have to send a second Data object still need to
+							 * do
+							 */
+							 updateDisconnect(false);
+							 if (disconnectSuccesful(socket))
+							 System.out.println("disconnect was succesful");
+							 else
+							 System.out.println("disconnect was not succesful");
+							 System.exit(0);
+							break;
+						case cnn:
+							transmission.setUser(User);
+							break;
+						case wsp:
+							transmission.setUser(User);
+							/* TODO -set the recipient and the message */
+							System.out.println("Please type in the name of the recipient");
+							String recipient = scLine.nextLine();
+							System.out.println("Please enter the message you wish to send");
+							message = scLine.nextLine();
+							transmission.setMsg(message);
+							transmission.setRecipent(recipient);
+							break;
+						case br:
+							transmission.setUser(User);
+							/* TODO - set the message */
+							//System.out.println("Please enter the message you wish to send");
+							//message = scLine.nextLine();
+							message = "Hello World";
+							transmission.setMsg(message);
+							break;
+					}
+					//System.out.println(">>>>>Client is sending the following transmission to server\n" + Parser.encode(transmission));
+					writer.println(Parser.encode(transmission));
+					outCounter += 1;
+					Thread.sleep(10);	
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+
+		}
+
+	}
+
+	public clientConnection(String [] arr) {
+		try {
+			/*debug  get the IP adress sorted and working*/
+			InetAddress address = InetAddress.getByName("10.80.83.131");
+			Socket clientSocketConnectionSocket = new Socket(arr[0], 25565);
+			updateDisconnect(true);
+			clientOutputHandler client = new clientOutputHandler(clientSocketConnectionSocket, isConnected);
+			serverInputHandler server = new serverInputHandler(clientSocketConnectionSocket, isConnected);
+			new Thread(server).start();
+			new Thread(client).start();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	/*
+	 * Method updateDisconnect
+	 * Modifies the state of isConnected to the given status
+	 * 
+	 * @param status - the status to change isConnected to
+	 */
+	private void updateDisconnect(boolean status) {
+		isConnected = status;
+	}
+
+	/*
+	 * Method disconnectSuccesful
+	 * Attempts to disconnect from the given socket
+	 * returns true is socket is closed and false otherwise
+	 * 
+	 * @param socket
+	 * 
+	 * @return - true if the socket is closed and false otherwise
+	 */
+	private boolean disconnectSuccesful(Socket socket) {
+		try {
+			socket.close();
+			return true;
+		} catch (Exception e) {
+
+		}
+		return false;
+	}
+
+	public static void main(String[] args) {
+		clientConnection t = new clientConnection(args);
+	}
+}

@@ -1,0 +1,26 @@
+//TODO Round 1: Include all the necessary libraries
+#include <stdlib.h>
+#include <stdio.h>
+#include <omp.h>
+
+int main(int argc, char* argv[]) {
+  int my_rank = 0;  //thread id
+  int nt = 1;       //number of threads to create
+ 
+	if (argc > 1) {
+		nt = atoi(argv[1]);
+	}
+  //TODO Round 2: If a command-line argument is provided, assign it to nt 
+ 
+
+  //TODO Round 1: Parallelise this code as described on SunLearn 
+  //     Round 2: Update the #pragma omp parallel directive by adding the num_threads clause  
+# pragma omp parallel private(my_rank) num_threads(nt)
+  {
+		my_rank = omp_get_thread_num();
+	  char* string = malloc(32*sizeof(char));
+	  sprintf(string, "Hello from thread %d of %d\n", my_rank, nt);
+	  printf("%s", string);
+  }
+  return 0;
+}

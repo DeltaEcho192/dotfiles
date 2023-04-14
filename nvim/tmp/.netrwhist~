@@ -1,0 +1,12 @@
+let g:netrw_dirhistmax  =10
+let g:netrw_dirhistcnt =0
+let g:netrw_dirhist_0='/Users/anthonydurrer/Uni/Year_3/CS-313/CS-313-Project-3'
+let g:netrw_dirhist_9='/Users/anthonydurrer/Dev/Vanoli/vanoli_notification'
+let g:netrw_dirhist_8='/Users/anthonydurrer/Uni/Year_3/CS-313/CS-313-Project-2'
+let g:netrw_dirhist_7='/Users/anthonydurrer/Uni/Year_3/CS-313/CS-313-Project-2/reciever/src'
+let g:netrw_dirhist_6='.'
+let g:netrw_dirhist_5='/Users/anthonydurrer/Uni/Year_3/CS_314/25041134-rw314/tut2/omp_nth_tri/src'
+let g:netrw_dirhist_4='/Users/anthonydurrer/Dev/Active_Projects'
+let g:netrw_dirhist_3='/Users/anthonydurrer/Uni/Year_3/CS_314/25041134-rw314/tut4/proc_mngmnt'
+let g:netrw_dirhist_2='/Volumes/STACIA/MULTI_02/ev_02/DurA220100_MM_EV02'
+let g:netrw_dirhist_1='/Users/anthonydurrer/Uni/Year_3/CS-313/CS-313/server/src'

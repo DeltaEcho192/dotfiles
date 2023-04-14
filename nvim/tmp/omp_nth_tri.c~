@@ -1,0 +1,160 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <time.h>
+#include <omp.h>
+
+double nth_tri_serial(int n, int nt);
+double nth_tri_critical(int n, int nt);
+double nth_tri_manual_private(int n, int nt);
+double nth_tri_reduction(int n, int nt);
+
+#define DEBUG 0 
+
+int main(int argc, char *argv[])
+{
+    double sum = 0;
+    int n, nt = 1, choice;
+
+    if (argc != 4){
+        printf("Incorrect Invocation, use: omp_nth_tri <N> <number of threads> \
+                <choice: 1-serial, 2-critical, 3-manual reduction, 4-reduction> \n");
+        return 0;
+    } else {
+        n = atoi(argv[1]);
+        nt = atoi(argv[2]);
+        choice = atoi(argv[3]);
+    }
+
+    if (n < 0){
+        printf("N should not be negative");
+        return 0;
+    }
+
+    switch (choice) {
+        case 2: 
+            sum = nth_tri_critical(n, nt);  break;
+        case 3: 
+            sum = nth_tri_manual_private(n, nt); break;
+        case 4:  
+            sum = nth_tri_reduction(n, nt); break;
+        default:  
+            sum = nth_tri_serial(n, nt);
+    }
+    printf("Sum = %lf", sum);
+}
+
+/**
+ * nth_tri_critical calculates the nth triangular number in parallel 
+ * - using a team of <nt> threads and a parallel for loop 
+ * - synchronises access to sum using the critical directive 
+ * - times the execution of the function using both clock and omp_get_wtime(); 
+ * - prints the times measured by both clock() and omp_get_wtime() 
+ * - returns: the nth triangular number 
+ */
+double nth_tri_critical(int n, int nt) {
+    
+//TODO: implement this function as described in the comment 
+	double sum;
+
+    clock_t start = 0, end = 0;
+	double startMP, endMP; 
+	start = clock();
+	startMP = omp_get_wtime();
+# pragma omp parallel for num_threads(nt) shared(sum)
+    for(int i = 1; i <= n; i++) {
+	# pragma omp critical
+        sum += i;
+    }
+
+	end = clock();
+	endMP = omp_get_wtime();
+    printf("Parallel Critical for loop: clock() measured %.3lf\n",difftime(end,start)/CLOCKS_PER_SEC);
+    printf("Parallel Critical for loop: omp_get_wtime() measured %.3lf\n", endMP - startMP);
+	return sum;
+}
+
+/**
+ * nth_tri_critical calculates the nth triangular number in parallel
+ * - using a team of <nt> threads and a parallel for loop 
+ * - uses a local_sum variable for a more efficient implementation 
+ * - synchronises access to global_sum using the critical directive 
+ * - times the execution of the function using both clock and omp_get_wtime(); 
+ * - prints the times measured by both clock() and omp_get_wtime() 
+ * - returns: the nth triangular number 
+ */
+double nth_tri_manual_private(int n, int nt) {
+
+	double sum;
+	double local_sum = 0;
+    clock_t start = 0, end = 0;
+	double startMP, endMP; 
+	start = clock();
+	startMP = omp_get_wtime();
+# pragma omp parallel num_threads(nt) private(local_sum) shared(sum)
+	{
+		local_sum = 0;
+# pragma omp for
+    for(int i = 1; i <= n; i++) {
+		local_sum += i;
+    }
+
+# pragma omp critical
+	sum += local_sum;
+	}
+	end = clock();
+	endMP = omp_get_wtime();
+    printf("Parallel Private for loop: clock() measured %.3lf\n",difftime(end,start)/CLOCKS_PER_SEC);
+    printf("Parallel Private for loop: omp_get_wtime() measured %.3lf\n", endMP - startMP);
+	return sum;
+//TODO: implement this function as described in the comment 
+
+}
+
+/**
+ * nth_tri_reduction calculates the nth triangular number in parallel 
+ * - using a team of <nt> threads, a parallel for loop and the reduction clause 
+ * - times the execution of the function using both clock and omp_get_wtime(); 
+ * - prints the times measured by both clock() and omp_get_wtime() 
+ * - returns: the nth triangular number 
+ */
+double nth_tri_reduction(int n, int nt) {
+
+//TODO: implement this function as described in the comment 
+	double sum = 0;
+
+    clock_t start = 0, end = 0;
+	double startMP, endMP; 
+	start = clock();
+	startMP = omp_get_wtime();
+# pragma omp parallel for num_threads(nt) reduction(+: sum) 
+    for(int i = 1; i <= n; i++) {
+        sum += i;
+    }
+	end = clock();
+	endMP = omp_get_wtime();
+    printf("Parallel Reduction for loop: clock() measured %.3lf\n",difftime(end,start)/CLOCKS_PER_SEC);
+    printf("Parallel Reduction for loop: omp_get_wtime() measured %.3lf\n", endMP - startMP);
+	return sum;
+
+}
+
+/**
+ * nth_tri_serial calculates and returns the nth triangular number 
+ * - using a for loop
+ * - times the execution of the function using clock()
+ * - prints the time measured by clock()
+ */
+double nth_tri_serial(int n, int nt) {
+    clock_t start = 0, end = 0;
+    double sum = 0;
+
+    start = clock();
+    for(int i = 1; i <= n; i++) {
+        sum += i;
+    }
+    end = clock();
+
+    printf("Serial for loop: clock() measured %.3lf\n",difftime(end,start)/CLOCKS_PER_SEC);
+    return sum;
+}

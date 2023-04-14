@@ -1,0 +1,10 @@
+#!/bin/bash
+
+for i in {1..15}
+do
+	osascript -e 'tell app "Terminal"
+do script "ping -s 5000 192.168.1.167"
+end tell'
+
+done
+

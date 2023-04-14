@@ -1,0 +1,41 @@
+\begin{document}
+	Anthony Durrer 25041134\\
+
+	\begin{equation}
+		\label{eq1.a}
+			I_{n}(x) & = \int_{0}^1 x^n \cdot e^x\,dx\\
+			& = \left[ x^n \cdot e^x \right]_{0}^1 - n \cdot \int_{0}^1 x^{n-1} \cdot e^x\,dx\\
+			 & = e - n \cdot \int_{0}^1 x^{n-1} \cdot e^x\,dx\\
+			 & = e - n \cdot I_{n-1}(x)\\
+			 & = e - n \cdot I_{n-1}(x)\\
+			I_{n+1}(x) & = e - n \cdot I_{n}(x)  
+	\end{equation}
+
+
+	1.b) \\
+	I_{0}(x) = \int_{0}^1 x^{0} \cdot e^x\,dx\\
+	\quad = \int_{0}^1 1 \cdot e^x\,dx\\
+	\quad = e^x\right|_{0}^1\\
+	\quad = e - 1\\
+
+	1.d) \; I_{n} = e - n \cdot (I_{n-1})\\
+	\tilde{I_{n}} = e - n \cdot \tilde{I_{n-1}}\\
+	E_{n} = \tilde{I_{n}} - I_{n}\\
+	= e -n \cdot \tilde{I_{n-1}} - e - n \cdot I_{n-1}\\
+	E_{n} = -n \cdot E_{n-1} \\
+	E_{0} = \delta\\
+	E_{n} = -n^n * \delta \\
+
+	1.e) \; 
+
+	\begin{align}
+
+	I_{n}(x) &= e - n \cdot I_{n-1}(x)\\
+	I_{n-1}(x) &= - \frac{1}{n} \cdot (I_{n} - e)\\
+	\\
+	E_{n-1} &= \tilde{I_{n-1}} - I_{n-1}\\
+	&= - \frac{1}{n} \cdot (\tilde{I_{n}} - e) - ( -1/n \cdot (I_{n} - e))\\
+	&= - \frac{1}{n} \cdot (\tilde{I_{n}} - I_{n})\\
+	E_{n-1} &= - \frac{1}{n} E_{n}
+	\end{align}
+\end{document}

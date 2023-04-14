@@ -1,0 +1,7 @@
+ RBUDP Receiver:
+
+ java Main true 1 localhost 1234 25565 ./
+
+ RBUDP Sender:
+
+java Main True 1234 25565 /Users/anthonydurrer/Desktop/ L1000058.DNG localhost 1

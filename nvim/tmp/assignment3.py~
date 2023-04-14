@@ -1,0 +1,240 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from prettytable import PrettyTable
+from scipy.integrate import quad
+from scipy.interpolate import CubicSpline
+from scipy import special
+import csv
+
+# Issue with the polyfit and also how to check how many correct digits.
+# Question 1.
+def question1(x_in):
+    exact = 0.745407258948051
+    tbl = PrettyTable()
+    tbl.field_names = ["N", "X value", "Error", "Num Correct digits"]
+    for i in range(6):
+        y_out = f1(x_in)
+        y_out = y_out.astype('float64')
+        z = np.polyfit(x_in, y_out, 2)
+        root = np.roots(z)
+        y_eval = func1(root[0])
+        correct = root[0] - exact
+        tbl.add_row([i, root[0], y_eval, correct]) 
+        x_in = np.array([x_in[1], x_in[2], root[0]], dtype=np.float64)
+
+    print(tbl)
+
+
+
+
+def question2a():
+    # Calculate the integral for fixed points
+    ingr = np.empty(4)
+    x = np.array([0, 1, 2, 3])
+    for i in range(4):
+        I_val = quad(func2, 0, 1, args=(i))
+        ingr[i] = I_val[0]
+    print(ingr)
+
+    # Bayercentric Form
+    yy = func3(2.5, 0, 1, 2, 3, ingr[0], ingr[1], ingr[2], ingr[3])
+    p = np.polyfit(x, ingr, 3)
+    zz = np.polyval(p, 2.5)
+    acurate = quad(func2, 0, 1, args=(2.5))
+    rel1 = ((yy - acurate[0]) / acurate[0]) * 100
+    rel2 = ((zz - acurate[0]) / acurate[0]) * 100
+
+    tbl2 = PrettyTable()
+    tbl2.field_names = ["Name", "Values", "Error", "Rel Error"]
+    tbl2.add_row(["Interpolation", yy, (yy-acurate[0]), rel1]) 
+    tbl2.add_row(["Polyfit", zz, (zz-acurate[0]), rel2]) 
+    tbl2.add_row(["Accurate", acurate[0], (acurate[0]-acurate[0]), 0]) 
+    print(tbl2)
+
+
+def question2b():
+    ingr = np.empty(20)
+    n = np.empty(20)
+    for i in range(20):
+        I_val = quad(func2, 0, 1, args=(i))
+        ingr[i] = I_val[0]
+        n[i] = i
+    p = np.polyfit(n, ingr, 19)
+    zz = np.polyval(p, 2.5) 
+    acurate = quad(func2, 0, 1, args=(2.5))
+    rel3 = ((zz - acurate[0]) / acurate[0]) * 100
+
+    ingr2 = np.empty(100)
+    n2 = np.empty(100)
+    for i in range(100):
+        I_val = quad(func2, 0, 1, args=(i))
+        ingr2[i] = I_val[0]
+        n2[i] = i
+    p2 = np.polyfit(n2, ingr2, 100)
+    yy = np.polyval(p2, 2.5) 
+    rel4 = ((yy - acurate[0]) / acurate[0]) * 100
+    tbl3 = PrettyTable()
+    tbl3.field_names = ["Name", "Values", "Error", "Rel Error"]
+    tbl3.add_row(["Polyfit :20", zz, (zz-acurate[0]), rel3]) 
+    tbl3.add_row(["Polyfit :100", yy, (yy-acurate[0]), rel4]) 
+    tbl3.add_row(["Accurate", acurate[0], (acurate[0]-acurate[0]), 0]) 
+    print(tbl3)
+
+
+def question3():
+    n = 10
+    a = 1
+    b = np.e
+
+    X = np.empty(10)
+    y = np.empty(10)
+
+    for i in range(n):
+        X[i] = - np.cos(((2*i - 1)*np.pi)/(2*n))
+
+    x = ((b+a)/2) + (((b-a)/2) * X)
+    for c in range(n):
+        y[c] = np.log(x[c])
+    print(x)
+    print(y)
+    p = np.polyfit(x, y, 9)
+    xx = np.linspace(1, np.e, 101)
+    yy = np.polyval(p, xx)
+    yacurate = np.log(xx)
+    plt.xlabel("Points between 1 and e")
+    plt.ylabel("Error Values")
+    plt.semilogy(xx, yy-yacurate)
+    plt.grid()
+    plt.show()
+
+def question4():
+    d = np.array([1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366])
+    r = np.array([8.15,  34.13, 25.11, 13.52, 7.8, 6.28, 4.42, 3.93, 3.53, 3.12, 2.65, 2.57, 2.04])
+    p = np.polyfit(d, r, 12)
+    dd = np.linspace(1, 366, 366)
+    predic = np.polyval(p, 397)
+    print(predic)
+    # This is a bad idea as the points are almost evenly spaced and the boundry of 
+    # the polynomial does not behave correctly.
+    plt.subplot(311)
+    plt.title("Polynomial Interpolation")
+    plt.plot(d, r, 'ro',  dd, np.polyval(p, dd), 'y-')
+    plt.xlabel("Days")
+    plt.ylabel("Amount of users r * 100000 people")
+    plt.grid()
+
+    pp = CubicSpline(d, r, bc_type='not-a-knot') 
+    plt.subplot(312)
+    plt.title("Cubic Spline Interpolation")
+    plt.grid()
+    plt.xlabel("Days")
+    plt.ylabel("Amount of users")
+    plt.plot(d, r, 'ro', dd, pp(dd), 'y-')
+
+
+    predic2 = pp(397)
+    print(predic2)
+
+    d_full = np.empty(366)
+    r_full = np.empty(366)
+    with open('wordle.txt') as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
+        line_count = 0
+        for row in csv_reader:
+            d_full[line_count] = row[0]
+            r_full[line_count] = row[1]
+            line_count += 1
+
+    plt.subplot(311)
+    plt.plot(d_full, r_full, 'b.')
+    plt.subplot(312)
+    plt.plot(d_full, r_full, 'b.')
+
+    ppp = np.polyfit(d_full, r_full, 12)
+    plt.subplot(313)
+    plt.plot(d, r, 'ro',  d_full, np.polyval(ppp, d_full), 'y-')
+    plt.plot(d_full, r_full, 'b.')
+    plt.show()
+
+
+def question5():
+    # Question 5.a:
+    x_1 = np.linspace(-10, 0, 100)
+    ai = special.airy(x_1)
+    plt.plot(x_1, ai[0], linewidth=4)
+    plt.grid()
+    plt.title("Question 5")
+    plt.xlabel("x")
+    plt.ylabel("y")
+
+    # Question 5.b:
+    n = 21
+    a = -10
+    b = 0
+
+    X = np.empty(21)
+    y = np.empty(21)
+
+    for i in range(n):
+        X[i] = - np.cos(((2*i - 1)*np.pi)/(2*n))
+
+    x = ((b+a)/2) + (((b-a)/2) * X)
+    y = special.airy(x)
+    y = y[0]
+    print(x)
+    print(y)
+    p = np.polyfit(x, y, 20)
+    plt.plot(x, y, 'ro', x_1, np.polyval(p, x_1)) 
+
+    roots = np.roots(p)
+    yy = np.zeros(6)
+    print(np.asarray(roots, float))
+    real_roots = np.array([roots[6], roots[7], roots[8], roots[11], roots[12], roots[15]])
+    plt.plot(real_roots, yy, 'b.')
+
+    plt.legend(["Airy Func", "Chebyshev Points", "Interpolation", "Interpolation Roots"])
+    plt.show()
+
+def func1(x):
+    y = x * np.exp(x) - (np.pi / 2)
+    return y
+
+
+def func2(x, n):
+    return (x**n)*np.exp(x)
+
+
+def func3(x, x1, x2, x3, x4, y1, y2, y3, y4):
+    top = (y1/(x-x1)) - (3*(y2/(x-x2))) + (3*(y3/(x-x3))) - (y4/(x-x4))
+    bottom = (1/(x-x1)) - (3*(1/(x-x2))) + (3*(1/(x-x3))) - (1/(x-x4))
+
+    return top/bottom
+
+
+
+## Control node of questions
+q1_check = True 
+q2_check = False 
+q3_check = False 
+q4_check = False 
+q5_check = False 
+
+if q1_check:
+    f1 = np.frompyfunc(func1, 1, 1)
+    x = np.array([1.0, 0.5, 0.75], dtype=np.float64)
+    xp = np.linspace(-1, 2, 100)
+    question1(x)
+
+if q2_check:
+    print("Question 2")
+    question2a()
+    question2b()
+
+if q3_check:
+    question3()
+
+if q4_check:
+    question4()
+
+if q5_check:
+    question5()

@@ -1,0 +1,1505 @@
+const express = require("express");
+const app = express();
+const port = 10201;
+const fs = require("fs");
+const csv = require("csvtojson");
+const { send } = require("process");
+const MongoClient = require("mongodb").MongoClient;
+const assert = require("assert");
+var firebase = require("firebase");
+const request = require("request");
+const sharp = require("sharp");
+var bodyParser = require("body-parser");
+var cors = require("cors");
+const jwt = require('jsonwebtoken')
+require('dotenv').config();
+var sha1 = require('sha1');
+var ObjectId = require('mongodb').ObjectId;
+
+app.options("*", cors());
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+
+app.use((req, res, next) => {
+	res.header("Access-Control-Allow-Origin", "*");
+	next();
+});
+
+
+var https = require("https");
+var https_options = {
+	key: fs.readFileSync("./report.vanoli-ag.ch/server.txt", "utf8"),
+	cert: fs.readFileSync("./report.vanoli-ag.ch/server.cer", "utf8"),
+	ca: [fs.readFileSync("./report.vanoli-ag.ch/ca_bundle.cer", "utf8")],
+};
+
+var httpsServer = https.createServer(https_options, app);
+
+//
+//
+//
+
+// Connection URL
+const url = "mongodb://root:xxmaster@mongo:27017";
+
+// Database Name
+const dbName = "train-api";
+var db;
+const fireSwitch = false;
+
+MongoClient.connect(url,{useUnifiedTopology: true}, function (err, client) {
+	assert.equal(null, err);
+	console.log("Connected successfully to server");
+
+	db = client.db(dbName);
+});
+
+//
+//
+//
+
+//Route for application to get Baustelle specific Checklist.
+//TODO have default and station merge.
+app.get("/getChecklist/:id/",authenticateToken , async (req, res) => {
+	var bauID = req.params.id;
+	console.log("Baustelle From User: ", bauID);
+	var checkFlag = false;
+	var defaultWork;
+	var queryD = {};
+	queryD["bauID"] = bauID;
+	queryD["archive"] = "false";
+	var checklist;
+	var defaultName;
+	var defaultID;
+	var checklistGet = db
+		.collection("location")
+		.find(queryD, { projection: { _id: 0 } });
+	await checklistGet.forEach(function (result) {
+		console.log("Result from user input: ", result);
+		if (Object.keys(result).length > 0) {
+			checklist = result["checklist"];
+			console.log(checklist);
+			defaultID = result["assign"];
+			console.log("Checklist of baustelle: ", checklist);
+		} else {
+			checkFlag = true;
+		}
+	});
+
+	var query = {};
+	query["bauID"] = defaultID;
+	var defaultWork;
+	var defaultChecklist = db
+		.collection("location")
+		.find(query, { projection: { _id: 0 } });
+	await defaultChecklist.forEach(function (result) {
+		console.log("Default Output:", result);
+		if (Object.keys(result).length > 0) {
+			defaultName = result["bauName"];
+			defaultWork = result["checklist"];
+			console.log(defaultWork);
+			console.log("Default checklist:", defaultWork);
+		} else {
+			checkFlag = true;
+		}
+	});
+	console.log("checkFlag: ", checkFlag);
+	if (checkFlag != true) {
+		var final = [...defaultWork, ...checklist];
+		console.log("Final list: ", final);
+		res.send(final);
+	} else {
+		res.sendStatus(404);
+	}
+});
+
+//Route so that application can verify a user based on internal list
+app.get("/check/:userId/:pswd/:udid", async (req, res) => {
+	var usercheck = false;
+	var udidC = req.params.udid;
+	var userId = req.params.userId.toLowerCase();
+	var passwordI = req.params.pswd;
+	var passHash = sha1(passwordI)
+	var deviceCheck;
+	await db
+		.collection("users")
+		.find({ userID: userId, password: passHash })
+		.toArray(function (err, result) {
+			if (Object.keys(result).length > 0) {
+				usercheck = true;
+			} else {
+				usercheck = false;
+			}
+			res.send(
+				JSON.stringify({ userid: req.params.userId, status: usercheck })
+			);
+		});
+});
+
+app.get("/udid/:check", (req, res) => {
+	var udid = req.params.check;
+	fs.readFile("./devices.txt", function (err, data) {
+		if (err) throw err;
+		if (data.includes(udid) == true) {
+			res.send("Found Device");
+		} else {
+			res.send("Device Not found");
+		}
+	});
+});
+
+//Returns all Baustelle
+app.get("/all/:uid",authenticateToken , async (req, res) => {
+	var uid = req.params.uid;
+	var query = {};
+	query["users"] = uid;
+	query["defaultF"] = "false";
+	query["archive"] = "false";
+	var finalObj = {};
+	var working = [];
+	var id = {};
+	var all = db
+		.collection("location")
+		.find(query, { projection: { _id: 0, users: 0, defaultF: 0, assign: 0 } });
+	await all.forEach(function (result) {
+		var name = result["bauName"];
+		working.push(name);
+		id[name] = result["bauID"];
+	});
+	finalObj["names"] = working;
+	finalObj["id"] = id;
+	res.send(finalObj);
+});
+
+//Adds a checklist item to a baustelle
+app.post("/checklist/:bauID",authenticateToken , (req, res) => {
+	//Check if new checks are already in the array.
+	var bauID = req.params.bauID;
+	console.log(bauID);
+	var newChecks = req.body;
+	console.log(newChecks);
+	var query = {};
+	var field = bauID;
+	var operator = {};
+	operator["$exists"] = true;
+	query[field] = operator;
+
+	var docId;
+	db.collection("location")
+		.find(query)
+		.toArray(function (err, result) {
+			if (err) throw err;
+			if (Object.keys(result).length > 0) {
+				console.log("Test");
+				docId = result[0]["_id"];
+				var updateQuery = {};
+				updateQuery["_id"] = "ObjectId('" + docId + "')";
+				var push_var = {};
+				var secBauId = req.params.bauID;
+				var fields = {};
+				fieldsWork = {};
+				fieldsWork["$each"] = newChecks;
+				fields[secBauId] = fieldsWork;
+				console.log(fields);
+				push_var["$push"] = fields;
+
+				db.collection("location").updateOne(
+					{ _id: docId },
+					{ $addToSet: fields },
+					function (err, result) {
+						if (err) throw err;
+						console.log(result.modifiedCount);
+						res.send("Changes Made: " + result.modifiedCount);
+					}
+				);
+			} else {
+				res.send("TrainStation not found");
+			}
+		});
+});
+
+//Firebase configureation
+var firebaseConfig = {
+	apiKey: "AIzaSyCO-iRzMsPberXuqhqcNFoAc8ZU32gfx0g",
+	authDomain: "train-app-287911.firebaseapp.com",
+	databaseURL: "https://train-app-287911.firebaseio.com",
+	projectId: "train-app-287911",
+	storageBucket: "train-app-287911.appspot.com",
+	messagingSenderId: "1070776313866",
+	appId: "1:1070776313866:web:0299a58ae18b1e702157f3",
+	measurementId: "G-JZ9WTN23NV",
+};
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+var dbf = firebase.firestore();
+
+async function getSingleDoc(docId) {
+	if (fireSwitch == false) {
+		const resMongo = db.collection("issues").findOne({_id: new ObjectId(docId)}, function (err, result) {
+			if (err) throw err;
+			if (result != null) {
+				console.log("Document was found");
+				return result;
+			} else {
+				console.log("Document was not found");
+				return null;
+			}});
+	} else {
+		const issueRef = dbf.collection("issues").doc(docId);
+		const doc = await issueRef.get();
+		if (!doc.exists) {
+			console.log("No such document!");
+		} else {
+			console.log("Document Was found");
+		}
+		return doc.data();
+	}
+}
+
+//Api route when a email has to be sent a request is sent from the app
+app.get("/change/:docID", authenticateToken ,async (req, res) => {
+	console.log("This document needs to be changed" + req.params.docID);
+	var docID = req.params.docID;
+
+	if (fireSwitch == false) {
+		const resMongo = db.collection("issues").findOne({_id: new ObjectId(docID)}, async function (err, result) {
+			if (err) throw err;
+			console.log(result);
+			if (result != null) {
+				notificationFormater(result, docID);
+				res.sendStatus(200);
+			} else {
+				res.sendStatus(404);
+			}});
+	} else {
+		//Gets all information on a firebase document
+		const deltaData = dbf.collection("issues").doc(req.params.docID);
+		const doc = await deltaData.get();
+		if (!doc.exists) {
+			console.log("No such document");
+		} else {
+			notificationFormater(doc.data(), docID);
+		}
+		res.sendStatus(200);
+	}
+});
+
+var admin = require("firebase-admin");
+
+var serviceAccount = require("./serviceAccountKey.json");
+
+admin.initializeApp({
+	credential: admin.credential.cert(serviceAccount),
+	storageBucket: "train-app-287911.appspot.com",
+});
+
+var bucket = admin.storage().bucket();
+
+async function getPicUrl(pictureName) {
+	let baseUrl =
+		"https://firebasestorage.googleapis.com/v0/b/" +
+		"train-app-287911.appspot.com" +
+		"/o/" +
+		"images" +
+		"%2F";
+	await bucket
+		.getFiles({ prefix: pictureName })
+		.then((file) => {
+			var token = file[0][0].metadata.metadata.firebaseStorageDownloadTokens;
+			console.log(token);
+			var newURL;
+			var imageParts = pictureName.split("/");
+			newURL = baseUrl + imageParts[1] + "?alt=media&token=" + token;
+			console.log(newURL);
+			return newURL;
+		})
+		.catch((err) => {
+			console.log(err.message);
+		});
+}
+
+async function download(url, dest) {
+	/* Create an empty file where we can save data */
+	const file = fs.createWriteStream(dest);
+
+	/* Using Promises so that we can use the ASYNC AWAIT syntax */
+	await new Promise((resolve, reject) => {
+		request({
+			/* Here you should specify the exact link to the file you are trying to download */
+			uri: url,
+			gzip: true,
+		})
+			.pipe(file)
+			.on("finish", async () => {
+				console.log(`The file is finished downloading.`);
+				resolve();
+			})
+			.on("error", (error) => {
+				reject(error);
+			});
+	}).catch((error) => {
+		console.log(`Something happened: ${error}`);
+	});
+}
+async function resize(name) {
+	await new Promise((resolve, reject) => {
+		var finalName = name + "sml";
+		sharp(name, { failOnError: false })
+			.rotate()
+			.resize({ height: 80, width: 70 })
+			.toFile(finalName)
+			.then((data) => {
+				console.log("File is resized");
+				resolve();
+			})
+			.catch((err) => {
+				console.log(err);
+				reject(err);
+			});
+	});
+}
+
+async function defaultName(baustelleD) {
+	var checkFlag = false;
+	var defaultWork;
+	var queryD = {};
+	var fieldD = baustelleD;
+	var operatorD = {};
+	operatorD["$exists"] = true;
+	queryD[fieldD] = operatorD;
+
+	var defaultName;
+	var checklistGet = db
+		.collection("location")
+		.find(queryD, { projection: { _id: 0 } });
+	await checklistGet.forEach(function (result) {
+		console.log("Result from user input: ", result);
+		if (Object.keys(result).length > 0) {
+			defaultName = result["assign"];
+			console.log("Default name for baustelle: ", defaultName);
+			return defaultName;
+		}
+	});
+}
+
+//Notification Code
+//
+//
+
+async function notificationFormater(docData, docID) {
+	var baustelle = docData.baustelle;
+	var bauID = docData.bauID;
+	var amtErrors = docData.checklist;
+	var useridR = docData.user;
+
+	var workSec = docData.schicht;
+	var time = new Date(workSec.seconds * 1000);
+	var relDate =
+		time.getDate().toString() +
+		"." +
+		(time.getMonth() + 1).toString() +
+		"." +
+		time.getFullYear().toString();
+
+	var userQuery = {};
+	var userids = [];
+	userQuery["bauID"] = bauID;
+	console.log(userQuery)
+	var usersGet = await db.collection("location").find(userQuery);
+	await usersGet.forEach(function (result) {
+		console.log("User IDS needed",result["users"])
+		userids = result["users"];
+	});
+
+
+	console.log(userids)
+	var tokens = [];
+	for (var x = 0; x < userids.length; x++) {
+		var tokenQuery = {};
+		tokenQuery["userid"] = userids[x];
+		var token = db.collection("tokens").find(tokenQuery);
+		await token.forEach(function (result) {
+			console.log(result);
+			if (result != undefined) {
+				if(result["token"] != "null")
+				{
+					var tokenArray = result["token"]
+					for(var z = 0; z < tokenArray.length; z++)
+					{
+						console.log(typeof tokenArray[z])
+						if(tokenArray[z] != "null")
+						{
+							tokens.push(tokenArray[z]);
+						}
+					}
+					console.log(tokens);
+				}
+			}
+			else{
+				console.log("This user is not registered: ", userids[x]);
+			}
+		});
+	}
+
+	var errorCount = 0;
+	for (var key of Object.keys(amtErrors)) {
+		console.log(amtErrors[key])
+		if(amtErrors[key] == false)
+		{
+			errorCount++;
+			console.log(errorCount)
+		}
+
+	}
+	var reportData = {};
+	reportData["bauID"] = docData.bauID
+	reportData["bauName"] = docData.baustelle;
+	reportData["userID"] = docData.user;
+	reportData["docID"] = docID;
+
+	if (errorCount > 0) {
+		reportData["empty"] = "false";
+	} else {
+		reportData["empty"] = "true";
+	}
+
+	reportData["click_action"] = "FLUTTER_NOTIFICATION_CLICK";
+	if (fireSwitch == false) {
+		var finalDate = docData.schicht.toISOString().split("T");
+	} else {
+		var testDate = docData.schicht.seconds;
+		var myDate = new Date(testDate * 1000);
+		var finalDate = myDate.toISOString().split("T");
+	}
+	reportData["date"] = finalDate[0]
+	var title = "Schichtmeldung " + finalDate[0] + ": " + docData.baustelle;
+	var body = "Der Report von "+useridR+" hat " + errorCount + " Fehler";
+	notificationPoster(title,body,reportData,tokens);
+}
+
+async function notificationPoster(titleU, bodyU,dataU, tokensU) {
+	var message = {
+		notification : {
+			title: titleU,
+			body: bodyU,
+		},
+		data : dataU,
+		tokens: tokensU
+	};
+
+	console.log(message)
+	admin.messaging().sendMulticast(message)
+		.then((response) => {
+			console.log(response.successCount + ' messages were sent successfully');
+		})
+}
+
+count = 0;
+async function emailFormater(docData, docID) {
+	var baustelle = docData.baustelle;
+	var bauID = docData.bauID;
+	var errorCheck = docData.errors;
+	var commentCheck = docData.comments;
+	console.log("CommentS: ", commentCheck);
+	var images = docData.images;
+	var allOkay = docData.checklist;
+	var flag = false;
+
+	//A initial check to see if all check items are true then Skip read processes.
+	Object.keys(allOkay).forEach(async function (key) {
+		if (allOkay[key] != true) {
+			console.log("Found false checklist Item");
+			flag = true;
+		}
+	});
+
+	if (flag == true) {
+		console.log("Sending non normal emails");
+		//The following gets all the relevent assignec for the default and the given baustelle
+		var defaultData;
+		var bauData;
+		var subSet = {};
+		var defEmailQuery = {};
+		var nameDefult;
+
+		var checkFlag = false;
+		var defaultWork;
+		var queryD = {};
+		var fieldD = baustelle;
+		var operatorD = {};
+		operatorD["$exists"] = true;
+		queryD["bauID"] = bauID;
+
+		var defaultName;
+		var checklistGet = db
+			.collection("location")
+			.find(queryD, { projection: { _id: 0 } });
+		await checklistGet.forEach(function (result) {
+			console.log("Result from user input: ", result);
+			if (Object.keys(result).length > 0) {
+				defaultName = result["assign"];
+				console.log("Default name for baustelle: ", defaultName);
+			}
+		});
+
+		//
+		//
+		//
+		console.log(defaultName);
+		defEmailQuery["bauID"] = defaultName;
+		subSet["_id"] = 0;
+		subSet["baustelle"] = 0;
+		subSet["bauID"] = 0;
+		var defEmail = db.collection("email").find(defEmailQuery).project(subSet);
+		await defEmail.forEach(function (result) {
+			defaultData = result;
+		});
+		var bauQuery = {};
+		bauQuery["bauID"] = bauID;
+		var bauEmail = db.collection("email").find(bauQuery).project(subSet);
+		await bauEmail.forEach(function (result) {
+			bauData = result;
+		});
+		//Merge into one map
+		var allData = { ...defaultData, ...bauData };
+		var allEmails = [];
+		console.log(allData);
+		//Checks which checklist items actuall are present in report.
+		Object.keys(allData).forEach(function (key, rowS) {
+			var workEmailArr = allData[key];
+			for (var n = 0; n < workEmailArr.length; n++) {
+				if (allEmails.includes(workEmailArr[n]) == false) {
+					if (workEmailArr[n] != null) {
+						allEmails.push(workEmailArr[n]);
+					}
+				}
+			}
+		});
+
+		var errorKeys = [];
+		//Gets a list of emails for the errors present
+		Object.keys(errorCheck).forEach(function (row, key) {
+			Object.keys(allData).forEach(function (key, rowS) {
+				if (key.toString().trim() == row.toString().trim()) {
+					console.log("Match found Error");
+					errorKeys.push(key);
+				}
+			});
+		});
+		console.log(errorKeys);
+		var commentKeys = [];
+		//Gets a list of emails for the comments present.
+		Object.keys(commentCheck).forEach(function (row, key) {
+			Object.keys(allData).forEach(function (key, rowS) {
+				if (key.toString().trim() == row.toString().trim()) {
+					console.log("Match found Comment");
+					commentKeys.push(key);
+					console.log(commentKeys);
+				}
+			});
+		});
+		console.log(commentKeys);
+		//Assigns map of emails and the respective error keys that need to be sent
+		var defaultList = {};
+		var emailList = {};
+		for (var i = 0; i < errorKeys.length; i++) {
+			var curKey = errorKeys[i];
+			var curEmail = allData[curKey];
+			for (var x = 0; x < curEmail.length; x++) {
+				if (emailList.hasOwnProperty(curEmail[x])) {
+					emailList[curEmail[x]].push(curKey);
+				} else {
+					emailList[curEmail[x]] = [curKey];
+				}
+			}
+		}
+
+		//Assigns map of emails and the respective comments keys that need to be sent
+		for (var i = 0; i < commentKeys.length; i++) {
+			var curKey = commentKeys[i];
+			var curEmail = allData[curKey];
+			for (var x = 0; x < curEmail.length; x++) {
+				if (emailList.hasOwnProperty(curEmail[x])) {
+					emailList[curEmail[x]].push(curKey);
+				} else {
+					emailList[curEmail[x]] = [curKey];
+				}
+			}
+		}
+
+		//Gets the proper format for the date of the report.
+		var finalEmails = {};
+		var workSec = docData.schicht;
+		var time = new Date(workSec.seconds * 1000);
+		var relDate =
+			time.getDate().toString() +
+			"." +
+			(time.getMonth() + 1).toString() +
+			"." +
+			time.getFullYear().toString();
+
+		//Gets the First Name and Last Name of the user who sent the report.
+		var finalUsername;
+		var usernameQuery = {};
+		var usernameProject = { _id: 0, userID: 0, password: 0, EMail: 0, code: 0 };
+		usernameQuery["userID"] = docData.user;
+		var usernameSet = db
+			.collection("users")
+			.find(usernameQuery)
+			.project(usernameProject);
+		await usernameSet.forEach(function (result) {
+			var workingName = result["Vorname"];
+			var workingSurname = result["Nachname"];
+			finalUsername = workingName + " " + workingSurname;
+		});
+
+		//Creates the subject line of the email with the date and the baustelle of the report.
+		var subjectLine = "Schichtmeldung " + relDate + ": " + docData.baustelle;
+		//Creates the emails for each user.
+		console.log(emailList);
+		Object.keys(emailList).forEach(async function (key) {
+			//Removes Email from total email list
+			if (allEmails.includes(key)) {
+				var index = allEmails.indexOf(key);
+				if (index > -1) {
+					console.log("Removing email from all list");
+					allEmails.splice(index, 1);
+				}
+			}
+			var userData = emailList[key];
+			console.log(key);
+			var user = "<p>" + finalUsername + " (" + docData.user + ")</p><br>";
+			var errors = "<body><p><strong>Probleme: </strong><br>";
+			var comments = "<body><p><strong>Komentare: </strong><br>";
+			var link =
+				'<a href="https://report.vanoli-ag.ch/firebase.html?baustelle=' +
+				baustelle +
+				"&docID=" +
+				docID +
+				"&date=" +
+				relDate +
+				"&user=" +
+				docData.user +
+				"&bauID=" +
+				bauID +
+				'">Report Link</a></body></html>';
+
+			console.log(link);
+			//Goes through each relevent point for each user and creates each point dynamically
+			for (var z = 0; z < userData.length; z++) {
+				var imgFlag = false;
+				var secimgFlag = false;
+				if (userData[z] in errorCheck) {
+					//Check if there is a image that is relevent.
+					if (userData[z] in images) {
+						var imgPath = images[userData[z]];
+						if (imgPath != null) {
+							imgFlag = true;
+							//Gets image url
+							var imgHtml;
+							let baseUrl =
+								"https://firebasestorage.googleapis.com/v0/b/" +
+								"train-app-287911.appspot.com" +
+								"/o/" +
+								"images" +
+								"%2F";
+							await bucket
+								.getFiles({ prefix: imgPath })
+								.then(async (file) => {
+									var token =
+										file[0][0].metadata.metadata.firebaseStorageDownloadTokens;
+									var newURL;
+									var imageParts = imgPath.split("/");
+									newURL =
+										baseUrl + imageParts[1] + "?alt=media&token=" + token;
+									var split = imgPath.split("/");
+									var localPath = "/usr/local/apache2/htdocs/" + split[1];
+									var data = await download(newURL, localPath);
+									await resize(localPath);
+
+									var finalPath =
+										"https://report.vanoli-ag.ch/images/" + split[1] + "sml";
+
+									imgHtml = '<td><img width="80" src="' + finalPath + '"></td>';
+								})
+								.catch((err) => {
+									console.log(err.message);
+								});
+						}
+					}
+					//Second image check
+					var secImg = userData[z] + "Sec";
+					if (secImg in images) {
+						var secimgPath = images[userData[z] + "Sec"];
+						if (secimgPath != null) {
+							secimgFlag = true;
+							var secimgHtml;
+							let baseUrl =
+								"https://firebasestorage.googleapis.com/v0/b/" +
+								"train-app-287911.appspot.com" +
+								"/o/" +
+								"images" +
+								"%2F";
+							await bucket
+								.getFiles({ prefix: secimgPath })
+								.then(async (file) => {
+									var token =
+										file[0][0].metadata.metadata.firebaseStorageDownloadTokens;
+									var newURL;
+									var imageParts = secimgPath.split("/");
+									newURL =
+										baseUrl + imageParts[1] + "?alt=media&token=" + token;
+									var split = secimgPath.split("/");
+									var localPath = "/usr/local/apache2/htdocs/" + split[1];
+									var data = await download(newURL, localPath);
+									await resize(localPath);
+									var finalPath =
+										"https://report.vanoli-ag.ch/images/" + split[1] + "sml";
+									secimgHtml =
+										'<td><img width="80" src="' + finalPath + '"></td>';
+								})
+								.catch((err) => {
+									console.log(err.message);
+								});
+						}
+					}
+					//Key and message for as point
+					var keysErrors =
+						'<table width="100%" border="1" cellspacing="0" cellpadding="1"><tbody><tr><td width="65%"><strong>' +
+						userData[z] +
+						'</strong></td><td width="80">&nbsp;</td><td width="80">&nbsp;</td></tr><tr><td width="65%">' +
+						errorCheck[userData[z]] +
+						"</td>";
+
+					if (imgFlag == true && secimgFlag == true) {
+						errors =
+							errors +
+							keysErrors +
+							imgHtml +
+							secimgHtml +
+							"</tr></tbody></table>";
+					}
+					if (imgFlag == true && secimgFlag == false) {
+						errors =
+							errors +
+							keysErrors +
+							imgHtml +
+							'<td width="80">&nbsp;</td></tr></tbody></table>';
+					}
+					if (imgFlag == false && secimgFlag == true) {
+						errors =
+							errors +
+							keysErrors +
+							secimgHtml +
+							'<td width="80">&nbsp;</td></tr></tbody></table>';
+					}
+					if (imgFlag == false && secimgFlag == false) {
+						errors =
+							errors +
+							keysErrors +
+							'<td width="80">&nbsp;</td><td width="80">&nbsp;</td></tr></tbody></table>';
+					}
+				}
+			}
+
+			//Same as previous function execpt it is for the comment fields
+			for (var t = 0; t < userData.length; t++) {
+				var imgFlagC = false;
+				var secimgFlagC = false;
+				if (userData[t] in images) {
+					var imgPathC = images[userData[t]];
+					if (imgPathC != null) {
+						imgFlagC = true;
+						var imgHtmlC;
+						let baseUrl =
+							"https://firebasestorage.googleapis.com/v0/b/" +
+							"train-app-287911.appspot.com" +
+							"/o/" +
+							"images" +
+							"%2F";
+						await bucket
+							.getFiles({ prefix: imgPathC })
+							.then(async (file) => {
+								var token =
+									file[0][0].metadata.metadata.firebaseStorageDownloadTokens;
+								var newURL;
+								var imageParts = imgPathC.split("/");
+								newURL = baseUrl + imageParts[1] + "?alt=media&token=" + token;
+								var split = imgPathC.split("/");
+								var localPath = "/usr/local/apache2/htdocs/" + split[1];
+								var data = await download(newURL, localPath);
+								await resize(localPath);
+								var finalPath =
+									"https://report.vanoli-ag.ch/images/" + split[1] + "sml";
+								imgHtmlC = '<td><img width="70" src="' + finalPath + '"></td>';
+							})
+							.catch((err) => {
+								console.log(err.message);
+							});
+					}
+				}
+				var secImgC = userData[t] + "Sec";
+				if (secImgC in images) {
+					var secimgPathC = images[userData[t] + "Sec"];
+					if (secimgPathC != null) {
+						secimgFlagC = true;
+						var secimgHtmlC;
+						let baseUrl =
+							"https://firebasestorage.googleapis.com/v0/b/" +
+							"train-app-287911.appspot.com" +
+							"/o/" +
+							"images" +
+							"%2F";
+						await bucket
+							.getFiles({ prefix: secimgPathC })
+							.then(async (file) => {
+								var token =
+									file[0][0].metadata.metadata.firebaseStorageDownloadTokens;
+								var newURL;
+								var imageParts = secimgPathC.split("/");
+								newURL = baseUrl + imageParts[1] + "?alt=media&token=" + token;
+								var split = secimgPathC.split("/");
+								var localPath = "/usr/local/apache2/htdocs/" + split[1];
+								var data = await download(newURL, localPath);
+								await resize(localPath);
+								var finalPath =
+									"https://report.vanoli-ag.ch/images/" + split[1] + "sml";
+								secimgHtmlC =
+									'<td><img width="70" src="' + finalPath + '"></td>';
+							})
+							.catch((err) => {
+								console.log(err.message);
+							});
+					}
+				}
+				if (userData[t] in commentCheck) {
+					var keysComment =
+						'<table width="100%" border="1" cellspacing="0" cellpadding="1"><tbody><tr><td width="65%"><strong>' +
+						userData[t] +
+						'</strong></td><td width="80">&nbsp;</td><td width="80">&nbsp;</td></tr><tr><td width="65%">' +
+						commentCheck[userData[t]] +
+						"</td>";
+					if (imgFlagC == true && secimgFlagC == true) {
+						comments =
+							comments +
+							keysComment +
+							imgHtmlC +
+							secimgHtmlC +
+							"</tr></tbody></table>";
+					}
+					if (imgFlagC == true && secimgFlagC == false) {
+						comments =
+							comments +
+							keysComment +
+							imgHtmlC +
+							'<td width="80">&nbsp;</td></tr></tbody></table>';
+					}
+					if (imgFlagC == false && secimgFlagC == true) {
+						comments =
+							comments +
+							keysComment +
+							secimgHtmlC +
+							'<td width="80">&nbsp;</td></tr></tbody></table>';
+					}
+					if (imgFlagC == false && secimgFlagC == false) {
+						comments =
+							comments +
+							keysComment +
+							'<td width="80">&nbsp;</td><td width="80">&nbsp;</td></tr></tbody></table>';
+					}
+				}
+			}
+
+			//Final check if comment or error fields need to be added.
+			if (commentKeys.length == 0) {
+				var final = errors + user + link;
+			}
+			if (errorKeys.length == 0) {
+				var final = comments + user + link;
+			}
+			if (errorKeys.length > 0 && commentKeys.length > 0) {
+				var final = errors + comments + user + link;
+			}
+			finalEmails[key] = final;
+			sendAsyncEmail(final, key, subjectLine);
+		});
+
+		//All emails that have no error messages are sent the a all okay message.
+		console.log(allEmails);
+		/*
+	var allOkayEmails = {};
+
+	for (var b = 0; b < allEmails.length; b++) {
+	  console.log("Sending a all okay email from the all list left over")
+	  var currentEmail = allEmails[b];
+	  var user = "<p>" + finalUsername + " (" + docData.user + ")</p>";
+	  var message = "<p>Keine Probleme<p>";
+
+	  var final = message + user;
+
+	  allOkayEmails[currentEmail] = final;
+	}
+	console.log(sendEmail)
+	sendEmail(allOkayEmails, subjectLine);
+	*/
+	} else {
+		console.log("Sending all okay Emails");
+		//If all checklist items are true then send a all okay message to all the users assigned to the baustelle or the default
+		var defaultData;
+		var bauData;
+		var subSet = {};
+		var defEmailQuery = {};
+		defEmailQuery["baustelle"] = defaultName;
+		subSet["_id"] = 0;
+		subSet["baustelle"] = 0;
+		var defEmail = db.collection("email").find(defEmailQuery).project(subSet);
+		await defEmail.forEach(function (result) {
+			defaultData = result;
+		});
+		var bauQuery = {};
+		bauQuery["baustelle"] = baustelle;
+		var bauEmail = db.collection("email").find(bauQuery).project(subSet);
+		await bauEmail.forEach(function (result) {
+			bauData = result;
+		});
+		var errorKeys = [];
+
+		var allData = { ...defaultData, ...bauData };
+
+		var allEmails = [];
+		Object.keys(allData).forEach(function (key, rowS) {
+			var workEmailArr = allData[key];
+			for (var n = 0; n < workEmailArr.length; n++) {
+				if (allEmails.includes(workEmailArr[n]) == false) {
+					if (workEmailArr[n] != null) {
+						allEmails.push(workEmailArr[n]);
+					}
+				}
+			}
+		});
+
+		var workSec = docData.schicht;
+
+		var time = new Date(0);
+		time.setUTCSeconds(workSec.seconds);
+
+		var relDate =
+			time.getDate().toString() +
+			"." +
+			time.getMonth().toString() +
+			"." +
+			time.getFullYear().toString();
+
+		var finalUsername;
+		var usernameQuery = {};
+		var usernameProject = { _id: 0, userID: 0, password: 0, EMail: 0, code: 0 };
+		usernameQuery["userID"] = docData.user;
+
+		var usernameSet = db
+			.collection("users")
+			.find(usernameQuery)
+			.project(usernameProject);
+
+		await usernameSet.forEach(function (result) {
+			var workingName = result["Vorname"];
+			var workingSurname = result["Nachname"];
+			finalUsername = workingName + " " + workingSurname;
+		});
+
+		var subjectLine = "Schichtmeldung " + relDate + ": " + docData.baustelle;
+		var finalEmails = {};
+		for (var b = 0; b < allEmails.length; b++) {
+			var currentEmail = allEmails[b];
+			var user = "<p>" + finalUsername + " (" + docData.user + ")</p>";
+			var message = "<p>Keine Probleme<p>";
+
+			var final = message + user;
+
+			finalEmails[currentEmail] = final;
+		}
+
+		sendEmail(finalEmails, subjectLine);
+	}
+}
+
+const nodemailer = require("nodemailer");
+const { timeStamp, error } = require("console");
+const { resolve } = require("path");
+
+//Function to send emails
+function sendEmail(data, subjectLine) {
+	let jsonData = require("./config.json");
+
+	var hostI = jsonData.host;
+	var portI = jsonData.port;
+	var userI = jsonData.senderemail;
+	var pwI = jsonData.senderpw;
+
+	let transport = nodemailer.createTransport({
+		host: hostI,
+		port: portI,
+		auth: {
+			user: userI,
+			pass: pwI,
+		},
+	});
+
+	Object.keys(data).forEach(function (key) {
+		const message = {
+			from: "report@vanoli-ag.ch", // Sender address
+			to: key, // List of recipients
+			subject: subjectLine, // Subject line
+			html: data[key], // Plain text body
+		};
+		transport.sendMail(message, function (err, info) {
+			if (err) {
+				console.log(err);
+			} else {
+				console.log("Send All okay email");
+				//console.log(info);
+			}
+		});
+	});
+}
+
+function sendAsyncEmail(body, key, subjectLine) {
+	let jsonData = require("./config.json");
+	var hostI = jsonData.host;
+	var portI = jsonData.port;
+	var userI = jsonData.senderemail;
+	var pwI = jsonData.senderpw;
+
+	let transport = nodemailer.createTransport({
+		host: hostI,
+		port: portI,
+		auth: {
+			user: userI,
+			pass: pwI,
+		},
+	});
+
+	const message = {
+		from: "report@vanoli-ag.ch", // Sender address
+		to: key, // List of recipients
+		subject: subjectLine, // Subject line
+		html: body, // Plain text body
+	};
+	transport.sendMail(message, function (err, info) {
+		if (err) {
+			console.log(err);
+		} else {
+			console.log("Sent Email");
+			//console.log(info);
+		}
+	});
+}
+
+//
+//
+//
+
+app.post("/updateToken/", authenticateToken ,async (req,res) => {
+	console.log(req.body)
+	var userid = req.body.userid;
+	var token = req.body.token;
+	if(userid != null || token != null)
+	{
+		var queryCheck = {}
+		queryCheck["userid"] = userid;
+		var set = {};
+		var subSet = {};
+		subSet["token"] = token
+		set["$set"] = subSet
+		var userCheck = await db.collection("reportTokens").find(queryCheck).count();
+		if(userCheck > 0)
+		{
+			var arrayQuery = {};
+			var arrayQuerySub = {};
+			arrayQuerySub["$in"] = [token]
+			arrayQuery["userid"] = userid;
+			arrayQuery["token"] = arrayQuerySub
+			var arrayCheck = await db.collection("reportTokens").find(arrayQuery).count();
+
+			if(arrayCheck == 0)
+			{
+				var queryUpdate = {};
+				queryUpdate["userid"] = userid;
+				var set = {};
+				var subSet = {};
+				subSet["token"] = token
+				set["$push"] = subSet
+
+				db.collection("reportTokens").updateOne(queryUpdate,set, function(errDB, resDB){
+					if(errDB) throw errDB;
+					console.log("Updated Token");
+					res.sendStatus(201);
+				})
+			}
+			else
+			{
+				console.log("token already in array");
+			}
+		}else{
+			var setInsert = {}
+			setInsert["userid"] = userid;
+			setInsert["token"] = [token];
+			db.collection("reportTokens").insert(setInsert);
+			res.sendStatus(201);
+		}
+	}
+	else
+	{
+		res.sendStatus(405);
+	}
+
+});
+
+app.post("/tokenLogout", authenticateToken ,async (req,res) => {
+	var userid = req.body.userid;
+	var token = req.body.token;
+
+	if(userid != null || token != null)
+	{
+		var logoutQuery = {};
+		logoutQuery["userid"] = userid;
+		var logoutSet = {};
+		var subSet = {};
+
+		subSet["token"] = token;
+		logoutSet["$pull"] = subSet;
+
+		db.collection("reportTokens").updateOne(logoutQuery,logoutSet, function(errDB, resDB){
+			if(errDB) throw (errDB, res.sendStatus(405));
+			console.log("Removed Token");
+			res.sendStatus(201);
+		})
+
+	}
+})
+
+app.post("/statusChangeAlert", authenticateToken ,async (req,res) => {
+	var docID = req.body.docID;
+	var key = req.body.key;
+
+	if (fireSwitch == false) {
+		const resMongo = db.collection("issues").findOne({_id: new ObjectId(docID)}, async function (err, result) {
+			if (err) throw err;
+			console.log(result);
+			if (result != null) {
+				result = decodeMongo(result);
+				var check = await statusNotificationFormater(result, docID, key);
+				if (check == true) {
+					res.sendStatus(200);
+				} else {
+					res.sendStatus(400);
+				}
+			} else {
+				res.sendStatus(404)
+			}
+		});
+	} else {
+		const deltaData = dbf.collection("issues").doc(docID);
+		const doc = await deltaData.get();
+		if (!doc.exists) {
+			console.log("No such document");
+		} else {
+			var check = await statusNotificationFormater(doc.data(), docID, key);
+			if(check == true) {
+				res.sendStatus(200);
+			} else {
+				res.sendStatus(404);
+			}
+		}
+	}
+})
+
+async function statusNotificationFormater(docData, docID, key)
+{
+	var baustelle = docData.baustelle;
+	var workCom = docData.workCom;
+	var status = workCom[key];
+	var statusMessage = status["text"];
+	var statusUser = status["user"];
+	var statusTime = status["time"];
+	var statusBool = docData.status;
+	var orgUser = docData.user;
+	var date = docData.schicht.seconds;
+
+	var myDate = new Date(statusTime);
+	var finalDate = myDate.toISOString().split("T");
+	var finalTime = finalDate[0]
+
+
+	var reportData = {};
+	reportData["bauID"] = docData.bauID
+	reportData["bauName"] = baustelle
+	reportData["date"] = date.toString();
+	reportData["click_action"] = "FLUTTER_NOTIFICATION_CLICK";
+
+	if(statusBool[key] == 1)
+	{
+		var titleU = "Abgeschlossen:"
+		var bodyU = key + " am "+finalTime+" von Baustelle: "+baustelle +" ist fertig und hat Kommentar: "+ statusMessage;
+
+		var tokenQuery = {};
+		var tokens = [];
+		tokenQuery["userid"] = orgUser;
+		var token = db.collection("reportTokens").find(tokenQuery);
+		await token.forEach(function (result) {
+			console.log(result);
+			if (result != undefined) {
+				if(result["token"] != "null")
+				{
+					var tokenArray = result["token"]
+					for(var z = 0; z < tokenArray.length; z++)
+					{
+						console.log(typeof tokenArray[z])
+						if(tokenArray[z] != "null")
+						{
+							tokens.push(tokenArray[z]);
+						}
+					}
+					console.log(tokens);
+				}
+			}
+			else{
+				console.log("This user is not registered: ", orgUser);
+			}
+		});
+
+
+		var message = {
+			notification : {
+				title: titleU,
+				body: bodyU,
+			},
+			data : reportData,
+			tokens: tokens
+		};
+
+		console.log(message)
+		admin.messaging().sendMulticast(message)
+			.then((response) => {
+				console.log(response.successCount + ' messages were sent successfully');
+				if(response.successCount == 0)
+				{
+					return false
+				}
+				else{
+					return true;
+				}
+			})
+	}
+	else{
+		return false
+	}
+}
+
+app.post("/uploadData", authenticateToken ,async (req,res) => {
+	var usr_data = req.body;
+	console.log(usr_data);
+	var query = {};
+	query["user"] = usr_data.user;
+	query["baustelle"] = usr_data.baustelle;
+	query["bauID"] = usr_data.bauID;
+	query["schicht"] = new Date(usr_data.schicht);
+	query["udid"] = usr_data.udid;
+	query["errors"] = usr_data.errors;
+	query["comments"] = usr_data.comments;
+	query["images"] = usr_data.images;
+	query["audio"] = usr_data.audio;
+	query["priority"] = usr_data.priority;
+	query["checklist"] = usr_data.checklist;
+	query["status"] = usr_data.status;
+	query["workCom"] = usr_data.workCom;
+	query["errCnt"] = usr_data.errCnt;
+
+	if (fireSwitch == false) {
+		query = encodeMongo(query);
+		const resMongo = await db.collection("issues").insertOne(query);
+		console.log("New document id: ", resMongo["insertedId"]);
+		var format = '{"docid":"'+resMongo["insertedId"]+'"}'
+		res.send(JSON.parse(format));
+	} else {
+		const resDb = await dbf.collection("issues").add(query);
+		console.log("New document has been added: ", resDb.id);
+		var format = '{"docid":"'+resDb.id+'"}'
+		res.send(JSON.parse(format));
+	}
+})
+
+app.post("/uploadEmptyData", authenticateToken, async (req, res) => {
+	var usr_data = req.body;
+	console.log(usr_data);
+	var query = {};
+	query["user"] = usr_data.user;
+	query["baustelle"] = usr_data.baustelle;
+	query["bauID"] = usr_data.bauID;
+	query["schicht"] = new Date(usr_data.schicht);
+	query["udid"] = usr_data.udid;
+	query["errors"] = usr_data.errors;
+	query["comments"] = usr_data.comments;
+	query["images"] = usr_data.images;
+	query["audio"] = usr_data.audio;
+	query["priority"] = usr_data.priority;
+	query["checklist"] = usr_data.checklist;
+	query["status"] = usr_data.status;
+	query["workCom"] = usr_data.workCom;
+	query["errCnt"] = usr_data.errCnt;
+
+	if (fireSwitch == false) {
+		query = encodeMongo(query);
+		const resMongo = await db.collection("issues").insertOne(query);
+		console.log("New document id: ", resMongo["insertedId"]);
+		var format = '{"docid":"'+resMongo["insertedId"]+'"}'
+		res.send(JSON.parse(format));
+	} else {
+		const resDb = await dbf.collection("issues").add(query);
+		console.log("New document has been added: ", resDb.id);
+		var format = '{"docid":"'+resDb.id+'"}'
+		res.send(JSON.parse(format));
+	}
+})
+
+app.post("/updateData", authenticateToken, async (req, res) => {
+	var usr_data = req.body;
+	console.log(usr_data);
+	var query = {};
+	query["errors"] = usr_data.errors;
+	query["comments"] = usr_data.comments;
+	query["images"] = usr_data.images;
+	query["audio"] = usr_data.audio;
+	query["priority"] = usr_data.priority;
+	query["checklist"] = usr_data.checklist;
+	query["errCnt"] = usr_data.errCnt;
+
+	if (fireSwitch == false) {
+		var fmtData = encodeMongo(query);
+		var id_data = {}; 
+		id_data["_id"] = `ObjectId(${usr_data.docid})`;
+		var set_data = {};
+		set_data["$set"] = fmtData;
+		console.log(id_data, set_data);
+		const resMongo = await db.collection("issues").updateOne({_id: new ObjectId(usr_data.docid)}, {$set: fmtData});
+		console.log(resMongo);
+		if (resMongo["acknowledged"] == true) {
+			res.sendStatus(200);
+		} else {
+			res.sendStatus(404);
+		}
+	} else {
+		const resDb = await dbf.collection("issues").doc(usr_data.docid).update(query)
+		console.log(resDb);
+		res.sendStatus(200);
+	}
+
+})
+
+app.post("/getReportM", authenticateToken, async (req, res) => {
+	var report_info = req.body;
+	var data_res = {};
+	console.log(report_info);
+	var bauID = report_info.bauID;
+	var usr = report_info.usr;
+	var startSchicht = report_info.start;
+	var endSchicht = report_info.end;
+
+	if (fireSwitch == false) {
+		var query = {"bauID": {$eq: `${bauID}`}, "user": {$eq: `${usr}`}, "schicht": {$lt: new Date(endSchicht), $gte: new Date(startSchicht)}};
+		//
+			db.collection("issues").find(query).toArray(function(err, result){
+				if (err) throw err;
+				if (result.length > 0) {
+					var data  = decodeMongo(result[0]);
+					var docID = data["_id"];
+					data_res = {"docID": docID, "data": data};
+					res.send(data_res);
+				} else {
+					console.log("Report not found");
+					res.send(404);
+				}
+			});
+	} else {
+		var report_output = await dbf.collection("issues").where("bauID", "==", bauID)
+			.where("user", "==", usr).where("schicht", ">=", new Date(startSchicht))
+			.where("schicht", "<", new Date(endSchicht)).get();
+		if (report_output.empty == false) {
+			console.log("report has been found");
+			var data = report_output.docs;
+			data = data[0];
+			data_res = {"docID": data.id, "data": data.data()}		
+			res.send(data_res)
+		} else {
+			console.log("report not found");
+			res.send(404);
+		}
+	}
+
+})
+function authenticateToken(req, res, next) {
+	const authHeader = req.headers['authorization']
+	const token = authHeader && authHeader.split(' ')[1]
+	if (token == null) return res.sendStatus(401)
+
+	jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
+		console.log(err)
+		if (err) return res.sendStatus(403)
+		req.user = user
+		next()
+	})
+}
+
+function encodeMongo(data) {
+	const reg = /\./g;
+	const reg2 = /\$/g;
+	for (const [key, value] of Object.entries(data)) {
+		if (typeof value === "object") {
+			Object.entries(value).forEach(([keyIn, valueIn]) => {
+				var newStr = keyIn.replace(reg, "\\@@");
+				var newStr2 = newStr.replace(reg2, "\\&&");
+				if (newStr2 !== keyIn) {
+					Object.defineProperty(
+						value,
+						newStr2,
+						Object.getOwnPropertyDescriptor(value, keyIn)
+					);
+					delete value[keyIn];
+				}
+			});
+		}
+	}
+	return data
+}
+
+function decodeMongo(data) {
+	const reg = /\\@@/g;
+	const reg2 = /\\&&/g;
+	for (const [key, value] of Object.entries(data)) {
+		if (typeof value === "object") {
+			Object.entries(value).forEach(([keyIn, valueIn]) => {
+				var newStr = keyIn.replace(reg, ".");
+				var newStr2 = newStr.replace(reg2, "$");
+				if (newStr2 !== keyIn) {
+					Object.defineProperty(
+						value,
+						newStr2,
+						Object.getOwnPropertyDescriptor(value, keyIn)
+					);
+					delete value[keyIn];
+				}
+			});
+		}
+	}
+	return data;
+}
+
+
+app.get("/test", (req, res) => {
+	console.log("API call made by anthony");
+	res.send("Test response from the Mobile Server");
+});
+
+
+httpsServer.listen(port, () => {
+	console.log(`Example app listening at http://localhost:${port}`);
+});

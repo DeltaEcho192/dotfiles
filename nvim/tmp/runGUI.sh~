@@ -1,0 +1,14 @@
+#!/bin/bash
+path_to_add=$(pwd)
+if [ $1 -eq 1 ]
+then
+	final_path=$path_to_add/bin
+else
+	final_path=$path_to_add/bin
+fi
+
+echo $final_path
+export PATH_TO_FX=$final_path
+cd ./bin/
+java --module-path $PATH_TO_FX --add-modules javafx.controls Gui
+

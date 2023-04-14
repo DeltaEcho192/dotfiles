@@ -1,0 +1,26 @@
+public class VOIP {
+    private udpSender VOIPSender;
+    private udpReceiver VOIPReceiver;
+    private boolean debugF = false;
+
+    public VOIP(int port, String host) {
+        VOIPSender = new udpSender(port, host, debugF);
+        VOIPReceiver = new udpReceiver(port, host);
+
+        Thread send = new Thread(VOIPSender);
+        Thread receive = new Thread(VOIPReceiver);
+
+        send.start();
+        receive.start();
+    }
+
+    public void stopCall() {
+        VOIPSender.setOnCall(false);
+        VOIPReceiver.setOnCall(false);
+    }
+
+    public static void main(String[] args) {
+        VOIP s = new VOIP(25565, "localhost");
+
+    }
+}

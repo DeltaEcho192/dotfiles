@@ -1,0 +1,17 @@
+import java.util.Observable;
+
+/**
+ * GuiInterface
+ */
+public class GuiInterface extends Observable {
+	GuiInterface() {
+		super();
+	}
+	
+	void changeData(int status) {
+		setChanged();
+		notifyObservers(status);
+	}
+
+	
+}

@@ -1,0 +1,619 @@
+body {
+  margin: 0;
+}
+.masthead {
+  padding-top: 1rem;
+  padding-bottom: 3rem;
+  background-image: url(./Assets/vanoli-banner.jpg);
+  background-repeat: no-repeat;
+  background-attachment: scroll;
+  background-position: center center;
+  background-size: cover;
+  min-width: 5rem;
+}
+h2 {
+    display: block;
+    font-size: 1em;
+}
+#mainNav {
+  background-color: rgba(0, 0, 0, 0.5);
+  position: fixed;
+  width: 100%;
+}
+a {
+  text-decoration: none;
+  color: white;
+}
+#navbar {
+  display: flex;
+}
+
+.heading {
+  color: white;
+  font-weight: bold;
+  padding: 1em;
+  margin: 0;
+  font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  display: block;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: auto;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  margin: auto;
+}
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+}
+
+li {
+  padding: 0 0.6em;
+  font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+#mainNav img {
+  height: 1.5rem;
+  vertical-align: middle;
+}
+.main-wrapper {
+  text-align: center;
+  margin: auto 300 10;
+  margin-top: 10;
+}
+.input {
+  text-align: center;
+  padding-top: 1rem;
+  position: relative;
+}
+
+p {
+  border: 1px solid rgba(0, 0, 0, 0.8);
+  padding: 10;
+  background-color: white;
+}
+.info {
+  display: grid;
+  grid-template-columns: auto auto auto;
+}
+.main_page {
+  text-align: -webkit-center;
+}
+main {
+  display: flex;
+  flex-direction: column;
+  padding: 1em;
+  align-items: center;
+}
+
+.tabulator {
+  font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+  background: linear-gradient(to right, white 30%, rgba(255, 255, 255, 0)),
+    linear-gradient(to right, rgba(255, 255, 255, 0), white 70%) 0 100%,
+    radial-gradient(
+      farthest-side at 0% 50%,
+      rgba(0, 0, 0, 0.2),
+      rgba(0, 0, 0, 0)
+    ),
+    radial-gradient(
+        farthest-side at 100% 50%,
+        rgba(0, 0, 0, 0.2),
+        rgba(0, 0, 0, 0)
+      )
+      0 100%;
+}
+.tabulator-col-content {
+  background-color: #555;
+  color: #fff;
+}
+.table-wrapper {
+  overflow: auto;
+  max-width: 90%;
+  margin: auto;
+  background: linear-gradient(to right, white 30%, rgba(255, 255, 255, 0)),
+    linear-gradient(to right, rgba(255, 255, 255, 0), white 70%) 0 100%,
+    radial-gradient(
+      farthest-side at 0% 50%,
+      rgba(0, 0, 0, 0.2),
+      rgba(0, 0, 0, 0)
+    ),
+    radial-gradient(
+        farthest-side at 100% 50%,
+        rgba(0, 0, 0, 0.2),
+        rgba(0, 0, 0, 0)
+      )
+      0 100%;
+  background-repeat: no-repeat;
+  background-color: white;
+  background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+  background-position: 0 0, 100%, 0 0, 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+
+tr {
+  border-bottom: 1px solid;
+}
+
+th {
+  background-color: #555;
+  color: #fff;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.5em 1em;
+  white-space: nowrap;
+}
+
+.hidden {
+  display: none;
+}
+#searchInput {
+  border: 1px solid;
+  font-size: initial;
+  margin-bottom: 1em;
+  padding: 0.25em;
+}
+.searchbar {
+  margin-top: 30px;
+  text-align: center;
+}
+button {
+  background-color: black;
+  font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  color: white;
+  padding: 12px;
+  margin: 10px 0;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 17px;
+}
+.actions {
+  text-align: center;
+}
+
+.table_wrapper {
+  text-align: -webkit-center;
+}
+
+.autocomplete {
+  margin-top: 15px;
+}
+input {
+  width: 250px;
+  padding: 0.5em;
+  margin-bottom: 1em;
+}
+#wrapperFlex {
+  margin: 1em;
+  display: grid;
+  justify-content: center;
+}
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  background-color: white;
+}
+
+a {
+  color: white;
+  text-decoration: none;
+}
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+}
+li {
+  padding: 0 0.6em;
+}
+
+.form-group {
+  padding: 1em;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+}
+.form-control {
+  margin: 1em auto;
+  padding: 0.5em;
+  width: 350px;
+}
+.start {
+  text-align: center;
+}
+.end {
+  text-align: center;
+}
+.selection {
+  text-align: center;
+  display: inline-grid;
+  font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+.calcBtn {
+  text-align: center;
+}
+
+button {
+  background-color: black;
+  font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  color: white;
+  padding: 12px;
+  margin: 10px 0;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 17px;
+}
+h4 {
+  margin: 0;
+  padding: 0;
+}
+.infoTbl {
+  background-color: white;
+  padding-top: 40px;
+  text-align: center;
+}
+.infowrapper {
+  display: inline-flex;
+}
+.rightWrapper {
+  padding: 23;
+}
+table {
+  font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  border-collapse: collapse;
+  margin: 0 1em;
+  border: #000000;
+}
+table.detailTbl td,
+th {
+  min-width: 150px;
+  border: 1px solid #000000;
+  text-align: left;
+  padding: 8px;
+  font-weight: bold;
+}
+
+#bikeList {
+  padding: 5;
+  margin: 10;
+  margin-left: 0;
+}
+#priceList {
+  padding: 5;
+  margin: 10;
+  margin-left: 0;
+}
+option {
+  font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+#rtnLbl {
+  font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  border: none;
+}
+.buttons {
+  display: flex;
+  justify-content: space-evenly;
+}
+.saveBtn {
+  text-align: center;
+}
+.centerInfo {
+  justify-content: center;
+  margin-top: 1em;
+}
+.infoScreen {
+  display: flex;
+  flex-flow: row wrap-reverse;
+  justify-content: space-evenly;
+}
+
+input {
+  border: 1px solid transparent;
+  background-color: #f1f1f1;
+  padding: 10px;
+  font-size: 14px;
+  position: relative;
+}
+input[type="text"] {
+  background-color: #f1f1f1;
+  width: 25%;
+}
+input[type="submit"] {
+  background-color: DodgerBlue;
+  color: #fff;
+}
+.autocomplete-items {
+  margin: auto;
+  position: absolute;
+  width: 25%;
+  border: 1px solid #d4d4d4;
+  border-bottom: none;
+  border-top: none;
+  z-index: 99;
+  /*position the autocomplete items to be the same width as the container:*/
+  top: 100%;
+  left: 0;
+  right: 0;
+}
+.autocomplete-items div {
+  padding: 10px;
+  cursor: pointer;
+  background-color: #fff;
+  border-bottom: 1px solid #d4d4d4;
+}
+.autocomplete-items div:hover {
+  /*when hovering an item:*/
+  background-color: #e9e9e9;
+}
+.autocomplete-active {
+  /*when navigating through the items using the arrow keys:*/
+  background-color: DodgerBlue !important;
+  color: #ffffff;
+}
+.input {
+  text-align: -webkit-center;
+}
+.logoutName {
+  display: flex;
+  cursor: pointer;
+}
+#baustelle-table {
+  width: 200px;
+  height: calc(100vh - 270px);
+}
+#info-table{
+  height: calc(100vh - 270px);
+}
+
+#fireError-table {
+  width: 600px;
+  /*height: calc(50vh - 250px);*/
+}
+
+#myImg {
+  border-radius: 5px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+#myImg:hover {
+  opacity: 0.7;
+}
+
+/* The Modal (background) */
+.modal {
+  display: none; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 1; /* Sit on top */
+  padding-top: 100px; /* Location of the box */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: rgb(0, 0, 0); /* Fallback color */
+  background-color: rgba(0, 0, 0, 0.9); /* Black w/ opacity */
+}
+
+/* Modal Content (Image) */
+.modal-content {
+  margin: auto;
+  display: block;
+  text-align: center;
+  width: 80%;
+  max-width: 700px;
+}
+
+/* Caption of Modal Image (Image Text) - Same Width as the Image */
+#caption {
+  margin: auto;
+  display: block;
+  width: 80%;
+  max-width: 700px;
+  text-align: center;
+  color: #ccc;
+  padding: 10px 0;
+  height: 150px;
+}
+
+/* Add Animation - Zoom in the Modal */
+.modal-content,
+#caption {
+  animation-name: zoom;
+  animation-duration: 0.6s;
+}
+
+@keyframes zoom {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* The Close Button */
+.close {
+  position: absolute;
+  top: 15px;
+  right: 35px;
+  color: #f1f1f1;
+  font-size: 40px;
+  font-weight: bold;
+  transition: 0.3s;
+}
+
+.close:hover,
+.close:focus {
+  color: #bbb;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* 100% Image Width on Smaller Screens */
+@media only screen and (max-width: 700px) {
+  .modal-content {
+    width: 100%;
+  }
+}
+
+#searchBau {
+  width: 200px;
+}
+.fireComment_wrapper {
+  margin-top: 0.5em;
+}
+
+.tooltip {
+  position: relative;
+  display: inline-block;
+  border-bottom: 1px dotted black;
+}
+
+.tooltip .tooltiptext {
+  visibility: hidden;
+  width: 120px;
+  background-color: #555;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px 0;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -60px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.tooltip .tooltiptext::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #555 transparent transparent transparent;
+}
+
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+  opacity: 1;
+}
+
+#reportCom {
+  margin-bottom: 20px;
+}
+#complete {
+  width: 25px;
+}
+#submitBtn {
+  width: 100px;
+  margin-left: 2rem;
+}
+#docInfoLink{
+  color: black;
+}
+#fireCom-table{
+  /*height: calc(50vh - 250px);*/
+}
+#archive
+{
+  width: 20;
+}
+.info_page{
+  margin-top: 30px;
+}
+/* The grid: Four equal columns that floats next to each other */
+.column {
+  float: left;
+  height: 400px;
+  padding: 10px;
+}
+
+/* Style the images inside the grid */
+.column img {
+  opacity: 0.8; 
+  cursor: pointer; 
+}
+
+.column img:hover {
+  opacity: 1;
+}
+
+/* Clear floats after the columns */
+.row:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+.row {
+	height: 400;
+}
+
+/* The expanding image container (positioning is needed to position the close button and the text) */
+.container {
+  position: relative;
+  display: none;
+}
+
+.more_img_class {
+	height: 400px;
+}
+
+
+/* Expanding image text */
+#imgtext {
+  position: absolute;
+  bottom: 15px;
+  left: 15px;
+  color: white;
+  font-size: 20px;
+}
+
+/* Closable button inside the image */
+.closebtn {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  color: white;
+  font-size: 35px;
+  cursor: pointer;
+}

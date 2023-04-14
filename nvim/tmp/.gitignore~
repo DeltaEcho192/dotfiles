@@ -1,0 +1,5 @@
+.DS_Store
+tut6/mpi_hello/obj
+tut6/mpi_hello/mpi_hello
+tut6/mpi_rs_ptp/obj
+tut6/mpi_rs_ptp/mpi_ranksum

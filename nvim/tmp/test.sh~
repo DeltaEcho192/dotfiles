@@ -1,0 +1,12 @@
+#!/bin/bash
+for i in {1..50}
+do
+	echo "Lauching $i connection"
+	osascript -e 'tell app "Terminal"
+do script "
+	cd /Users/anthonydurrer/Uni/Year_3/CS-313/CS-313/client/bin/
+	java clientConnection localhost <<< $i
+"
+end tell'
+	 
+done

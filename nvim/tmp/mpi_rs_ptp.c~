@@ -1,0 +1,42 @@
+/* File:       
+ *    mpi_rs_ptp.c
+ *
+ */
+#include <stdio.h>
+#include <string.h>
+#include <mpi.h>
+
+#include "logger.h"
+
+int main(void) {
+   int my_rank, ranksum; /* My process rank */
+   int comm_sz;
+
+   /* TODO: Start up MPI */
+   MPI_Init(NULL, NULL);
+
+   /* TODO: Get the number of processes */
+   /* TODO: Get my rank among all the processes */
+   MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
+   MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+
+   if (my_rank != 0) { 
+      /* TODO: Send my_rank to process 0 */
+		MPI_Send(&my_rank, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+   } else {  
+	/* TODO: Initialise ranksum with the rank of process 0 */
+	   ranksum = 0;
+	   int tmpsum = 0;
+	   for (int q = 1; q < comm_sz; q++) {
+			MPI_Recv(&tmpsum, 1, MPI_INT, q, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			ranksum += tmpsum;
+	   }
+	/* TODO: Receive the rank of each of the other processes and add it to ranksum */
+
+	log_result(my_rank, ranksum);
+   }
+
+   /* Shut down MPI */
+
+   return 0;
+}

@@ -1,0 +1,4 @@
+#Build Server
+javac -d ./client/bin/ ./client/src/*.java
+javac -d ./server/bin/ ./server/src/*.java
+

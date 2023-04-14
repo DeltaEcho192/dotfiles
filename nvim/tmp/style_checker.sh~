@@ -1,0 +1,20 @@
+#!/bin/bash
+set -e
+
+#Style checker script for all the java files to assure code cleanliness and 
+#consitansy.
+
+#Client Side
+
+echo "Client Side Style Check:"
+echo "--------------------------------------------------------------"
+
+java -jar ./client/lib/checkstyle.jar -c ./Docs/google_checks.xml ./client/src/*.java
+
+
+echo "Sever Side Style Check:"
+echo "--------------------------------------------------------------"
+
+wc -l <java -jar ./client/lib/checkstyle.jar -c ./Docs/google_checks.xml ./server/src/*.java
+
+

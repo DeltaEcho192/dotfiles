@@ -1,0 +1,8 @@
+add 0 10
+add 0 20
+add 0 30
+remove 0 20
+remove 0 10
+remove 0 5
+exchange 0 1 20
+instock 0

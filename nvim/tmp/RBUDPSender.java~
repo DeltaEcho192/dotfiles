@@ -1,0 +1,318 @@
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+
+
+/* TODO Pass in socket from main class and have it be started in a while loop */
+/**
+ * class RBUDPSender
+ * class handles the backend features of the RBUDP Protocol and uses threads to be run and work
+ * concurrently with the GUI
+ * @author Joseph Lutz
+ * @author Anthony Durrer
+ */
+public class RBUDPSender extends Thread {
+
+    //variables of the RBUDPSender thread
+    private InetAddress ip;
+    private int port;
+    private File file;
+    private int socketPort;
+    private ArrayList<DatagramPacket> datagramPackets = new ArrayList<>();
+    private ArrayList<Integer> sequences = new ArrayList<>();
+	private senderGUI gui;
+	private boolean debugF;
+	private long file_size;
+	private final int packet_size = 2048;
+	public int total_transfer;
+    private final int transfer_packet = 64;
+    DatagramSocket UDPSocket;
+    Socket TCPSocket;
+
+    private boolean lastSent = false;
+
+    /**
+     * 
+     * @param TCPSocket - the connection socket that is used for TCP Communciation signalling
+     * @param ip - the ip address of the recipient
+     * @param port - the connection port for RBUDP communication
+     * @param file - the file that is to be transferred
+     * @param socketPort - the port number of the TCP port
+     * @param gui - the GUI to be integrated
+     * @param debugF - flag for debugging and testing
+     */
+    public RBUDPSender(Socket TCPSocket, String ip, int port, File file, int socketPort , senderGUI gui, boolean debugF) {
+        try {
+            //can potentially cause an Unknown host exception
+            this.ip = InetAddress.getByName(ip);
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+        this.port = port;
+        this.file = file;
+        this.socketPort = socketPort;
+		this.TCPSocket = TCPSocket;
+		this.gui = gui;
+		this.debugF = debugF;
+    }
+
+    
+    @Override
+    /**
+     * @override
+     * method run is the main thread function that is to be run when sending communication over the RBUDP protocol
+     * calls various other methods and functions in the class.
+     * run method takes the given file to be send and sequentially reads bytes from the files, creates datagram packets 
+     * and sends the datagram packets through to the recipient, if a packet is dropped or does not arrive then it retransmits
+     * the given packet until all in the given sequence are received
+     */
+    public void run(){
+        try{
+            double t = System.currentTimeMillis();
+			total_transfer = 0;
+            UDPSocket = new DatagramSocket();
+            //output streams to TCP signal
+            ObjectOutputStream writer = new ObjectOutputStream(TCPSocket.getOutputStream());
+            ObjectInputStream reader = new ObjectInputStream(TCPSocket.getInputStream());
+            //input stream to read in from the file
+            FileInputStream fileReader = new FileInputStream(file);
+            //send the filename
+            String fileName = file.getName();
+			file_size = file.length();
+            byte [] fName = fileName.getBytes();
+            //DatagramPacket FileName = new DatagramPacket(fName, fName.length,ip,port);
+            //send the file name
+            //UDPSocket.send(FileName);
+            
+
+            //send the file name and size to signal the recipient
+            writer.writeObject(fileName);
+            writer.flush();
+			writer.writeObject(file_size);
+			writer.flush();
+            
+            int offset = 0;
+			int status = 0;
+            int size = fileReader.available();
+            byte [] fileContents;
+            System.out.println(fileReader.available());
+                        
+            if(transfer_packet*(packet_size-1) > size) {
+                fileContents = new byte[size];
+                fileReader.read(fileContents,0, size);
+            } else {
+                fileContents = new byte[transfer_packet*(packet_size-1)];
+                fileReader.read(fileContents, 0, transfer_packet*(packet_size-1));
+            }
+			if (debugF == false) {
+				try {
+					total_transfer += (double)(packet_size * transfer_packet); 
+					status = (int) (((total_transfer / (double) file_size))*100);
+					gui.setStatus(status);
+				} catch (Exception e) {
+					System.err.println(e);
+				}
+			}
+            //create the sequences and datagram packets for the initial sequences to be sent 
+            sequenceInit(fileContents);
+            
+            
+             
+            while(sequences.size() > 0) {
+                //send the sequence list to the recipient
+                writer.writeObject(getPacketsToSend());
+                writer.flush();
+                double t1 = System.currentTimeMillis();
+                //transmit the packets 
+                transmit(UDPSocket);
+				//read in the sequences missing 
+                ArrayList<Integer> stillMustSend = (ArrayList<Integer>) reader.readObject();
+				
+                while(stillMustSend.size() > 0){
+                    writer.writeObject(stillMustSend);
+                    writer.flush();
+                    resend(stillMustSend, UDPSocket);
+                    stillMustSend = (ArrayList<Integer>) (reader.readObject());
+                    //System.out.println("Size still to send" + stillMustSend.size());
+                }
+                //remove the given data packets from the datapackets still needing to be sent
+				if (transfer_packet > sequences.size()) {
+					sequences.subList(0, sequences.size()).clear();;
+					datagramPackets.subList(0, sequences.size()).clear();;
+				} else {
+					sequences.subList(0, transfer_packet).clear();;
+					datagramPackets.subList(0, transfer_packet).clear();;
+				}
+                //determine the remeaning bytes to be read in from the file and to be sent 
+                size = fileReader.available();
+                if(transfer_packet*(packet_size-1) > size) {
+                    fileContents = new byte[size];
+                    fileReader.read(fileContents,0, size);
+                } else {
+                    fileContents = new byte[transfer_packet*(packet_size-1)];
+                    fileReader.read(fileContents, 0, transfer_packet*(packet_size-1));
+                }
+                //update the GUI status
+				if (debugF == false) {
+					try {
+						total_transfer += (double)(packet_size * transfer_packet); 
+						status = (int) (((total_transfer / (double) file_size))*100);
+						gui.setStatus(status);
+					} catch (Exception e) {
+						System.err.println(e);
+					}
+				}
+                //create the new sequences and datagram packets 
+                sequenceInit(fileContents);
+            }
+            //update the gui status bar 
+            double time = (System.currentTimeMillis()- t)/1000;
+			if (debugF == false) {	
+				try {
+					gui.setStatus(100);
+				} catch (Exception e) {
+					System.err.println(e);
+				}
+			}
+            System.out.println(time);
+            System.out.println((file_size/(1024^2))/time + "kp/s");
+			UDPSocket.close();
+			fileReader.close();
+        } catch(UnknownHostException e){
+            e.printStackTrace();
+        } catch(SocketException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * method getPacketsToSend returns the next sequences to be transmitted 
+     * @return toSend - the datagram packets to be transmitted 
+     */
+    private ArrayList<Integer> getPacketsToSend(){
+        ArrayList<Integer> toSend = new ArrayList<>();
+        for(int i = 0;i <transfer_packet && i < sequences.size();i++){
+            toSend.add(sequences.get(i));
+        }
+		//System.out.println(toSend);
+        return toSend;
+    }
+
+    /**
+     * method transmit sends the given sequences to the receiver over the UDP socket 
+     * @param socket - the DatagramSocket to send the files over 
+     * @return - whether the datagram packets have been sent successfully
+     */
+    private boolean transmit(DatagramSocket socket) {
+        boolean transfer_success = true;
+        try{
+            for(int i = 0;i < transfer_packet && i < sequences.size() ;i++){
+                // System.out.println("Transferring packet " + i);
+                socket.send(datagramPackets.get(i));
+            }
+            // System.out.println("Done transmitting");
+        }catch( Exception e ) {
+            System.out.println("Error transferring the file");
+            transfer_success = false;
+            e.printStackTrace();
+        }
+
+        return transfer_success;
+    }
+
+    /**
+     * method transmit sends the given sequences to the receiver over the UDP socket 
+     * @param toSend - the list of sequences numbers to send
+     * @param writer - the TCP outputstream to signal
+     * @param socket - the DatrgamSocket used for signalling
+     * @param pos - the offset counter
+     * @return - whether the datagram packets have been sent correctly 
+     */
+    private boolean transmit(int [] toSend, ObjectOutputStream writer, DatagramSocket socket, int pos) {
+        boolean transfer_success = true;
+        try{
+            for(int i = pos;i< 32;i++){
+                //System.out.println("Transferring packet " + i);
+                socket.send(datagramPackets.get(i));
+            }
+        }catch( Exception e ) {
+            System.out.println("Error transferring the file");
+            transfer_success = false;
+            e.printStackTrace();
+        }
+
+        return transfer_success;
+    }
+    /**
+     * method resend sends the given sequences to the receiver over the UDP socket 
+     * @param resend - the list of sequence numbers to retransmit 
+     * @param socket - the DatagramSocket used to send the Datagram Packets 
+     * @return whether the retransmit was successful
+     */
+    private boolean resend(ArrayList<Integer> resend, DatagramSocket socket)  {
+        boolean transfer_success = true;
+        try{
+            for(int i = 0;i< resend.size();i++){
+                // System.out.println("Resending file packet " + resend.get(i));
+                socket.send(datagramPackets.get(resend.get(i)));
+            }
+        }catch(Exception e ) {
+            System.out.println("Error transferring the file");
+            transfer_success = false;
+            e.printStackTrace();
+        }
+
+        return transfer_success;
+    }
+
+    /**
+     * method creates Datagram packets using the fileContents bytes 
+     * @param fileContents - the file contents that needs to be turned into Datagram Packets
+     */
+    private void sequenceInit(byte [] fileContents) {
+        int sequenceNumber = 0;
+        int counter = 0;
+        for(int i = 0;i< fileContents.length;i += packet_size-1) {
+            byte [] filePart = new byte[packet_size];
+            //first  entrie of the array will contain the sequence number of each data packet 
+            filePart[0] = (byte)(sequenceNumber);
+            //copy the given bytes into the Datagram Packet 
+            if((packet_size-1) + i > fileContents.length){
+				//System.out.println(fileContents.length - i);
+                System.arraycopy(fileContents, i, filePart, 1, fileContents.length - i);
+            } else {
+                System.arraycopy(fileContents, i, filePart, 1, (packet_size - 1));
+			}
+            //System.out.println(fileContents);
+            //create the Datagram Packet
+            DatagramPacket packet = new DatagramPacket(filePart, packet_size, ip, port);
+            //add the datagram packte
+            datagramPackets.add(packet);
+            int sn = (filePart[0] &0xff);
+            //System.out.println(sn);
+            //add the sequence number to the given list
+            sequences.add(sn);
+            //wrap the sequence number around the given size specification
+            if (sequenceNumber == transfer_packet-1) {
+                sequenceNumber = 0;
+            } else {
+                sequenceNumber++;
+            }
+        }
+    }
+
+}

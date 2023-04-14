@@ -1,0 +1,43 @@
+import java.net.*;
+import java.util.ArrayList;
+import java.io.*;
+import java.util.ArrayList;
+
+/**
+ * The main server class which is called when a new server is created. It contains
+ * the arguments required for creating the server. It then goes into a infinate 
+ * loop which waits for connections from new users. When a new connection is detected
+ * it accepts the connection and calls the ServerClient.java methods to start a 
+ * new thread and handles all the relevent aspects.
+ *
+ * @author 25041134 Anthony Durrer
+ * */
+public class server {
+	public ArrayList<ServerClient> clientList;
+	public ArrayList<String> userList;
+    private static ServerSocket server = null;
+    
+	/**
+	 * This is the main function called on start up of the server.
+	 * @param args The user commamd line argument containing the port required.
+	 * */
+    public static void main(String[] args) throws Exception {
+        try {
+			int port = Integer.parseInt(args[0]);
+            server  = new ServerSocket(25565);
+            int counter = 0;
+            System.out.println("Server Booted on port: " + port);
+			ArrayList<ServerClient> threadList = new ArrayList<>();
+            while (true) {
+                counter++;
+                Socket serverSocket = server.accept();
+                System.out.println(" >> " + "Client No: " + counter + " started!");
+                ServerClient sct = new ServerClient(serverSocket, true, counter, "", threadList);
+				threadList.add(sct);
+                sct.start();
+            }   
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+    }
+}

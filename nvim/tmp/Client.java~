@@ -1,0 +1,29 @@
+import java.net.*;
+import java.io.*;
+import java.util.Scanner;
+
+public class Client {
+	Socket socket;
+	Connection server;
+
+	public static void main(String[] args) {
+		try {
+			new Client();
+		} catch (IOException e) {
+			System.out.println("Failed");
+			System.exit(-1);
+		}
+	}
+
+	public Client() throws IOException {
+		try {
+			socket = new Socket("fedora", 9999);
+		} catch(UnknownHostException e) {
+			System.out.println("Host Unknown");
+			System.exit(-1);
+		}
+
+		server = new Connection(socket, false);
+		server.start();	
+	}
+}

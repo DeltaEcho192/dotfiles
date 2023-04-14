@@ -1,0 +1,82 @@
+import java.io.*;
+import java.net.*;
+import java.util.Scanner;
+
+public class Connection extends Thread {
+	Socket socket;
+	//ClientManager manager;
+    ObjectOutputStream out;
+	boolean server;
+
+	public Connection(Socket socket, boolean server) {
+		super("Connection");
+		this.socket = socket;
+		this.server = server;	
+		//this.manager = manager;
+	}
+
+	public void run() {
+		if (server) setUsername();
+		else {
+			System.out.println((String) listen());
+
+        	Scanner stdIn = new Scanner(System.in);
+
+        	String msg = stdIn.nextLine();
+    	    sendMessage(msg);
+
+			System.out.println((String) listen());
+	
+	        closeConnection();
+		}
+	}
+
+	public void setUsername() {	
+		sendMessage("Enter Username:");
+		String username = (String) listen();
+		sendMessage("Welcome, " + username);
+
+		closeConnection();
+	}
+
+	public void echo() {
+		String input = "";
+        while (!input.equals("bye")) {
+			System.out.println(socket.isConnected());
+			input = (String) listen();
+			if (input == null) break;
+			sendMessage(input);
+           	System.out.println(input);
+        }
+	}
+
+	public Object listen() {
+		try {
+        	return new ObjectInputStream(socket.getInputStream()).readObject();
+        } catch (ClassNotFoundException e) {
+            System.out.println("Class not found");
+        } catch (IOException e) {
+			System.out.println("Connection Closed");
+			closeConnection();
+		}
+		return null;
+	}
+
+	public void sendMessage(Object object) {
+		try {
+			new ObjectOutputStream(socket.getOutputStream()).writeObject(object);
+		} catch (IOException e) {
+			System.out.println("Failed to send message");
+			return;
+		}
+	}
+
+	public void closeConnection() {
+		try {
+			this.socket.close();
+		} catch (IOException e) {
+			System.out.println("Failed to close the connection");
+			return;
+		}
+	}
+}

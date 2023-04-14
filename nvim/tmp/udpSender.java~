@@ -1,0 +1,84 @@
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+
+
+
+public class udpSender extends Thread{
+    
+    private boolean debugF;
+    private  int  port;
+    private  InetAddress address;
+    private boolean onCall;
+    private DatagramSocket socket;
+    private recordSound recorder;
+    private playSound player;
+
+    private byte [] f = new byte[100*44100];
+    int count = 0;
+    public udpSender(int port, String address, boolean debugF) {
+       
+        try {
+            this.debugF = debugF;
+            this.address = InetAddress.getByName(address);
+            this.port = port;
+            this.recorder = new recordSound();
+            if(debugF) {
+                this.player = new playSound();
+            }
+            this.socket = new DatagramSocket();
+        } catch (UnknownHostException e) {
+            
+            e.printStackTrace();
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
+    }
+     @Override
+    public void run() {
+        this.onCall = true;
+        while(onCall) {
+            try {
+                byte [] voiceDate = recorder.readSoundData();
+                if(debugF) {
+                    System.arraycopy(voiceDate, 0, f, count*voiceDate.length, voiceDate.length);
+                    count++;
+                }
+                DatagramPacket packet = new DatagramPacket(voiceDate, voiceDate.length, address, port);
+                socket.send(packet);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        
+        socket.close();
+        recorder.stopRecording();
+        if(debugF) {
+            System.out.println("recorder closed");
+            for(int i = 0;i<count;i++) {
+                byte [] b = new byte[44100];
+                System.arraycopy(f, i*44100, b, 0, 44100);
+                player.readDataToWrite(b);
+            }
+            player.stopListening();
+            System.out.println("exit");
+        }
+    }
+
+    public void setOnCall(boolean onCall) {
+        this.onCall = onCall;
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        udpSender sender = new udpSender(25565, "localhost",false);
+        Thread t = new Thread(sender);
+        t.start();
+        //sender.onCall = false;
+        
+    }
+
+
+}

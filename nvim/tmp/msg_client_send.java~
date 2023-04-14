@@ -1,0 +1,105 @@
+import java.io.ObjectOutputStream;
+import java.net.*;
+import java.util.Scanner;
+
+public class msg_client_send extends Thread {
+	private Socket socket;	
+	private ObjectOutputStream oos;
+	private boolean isConnected;
+	private boolean check;
+	private String hostname;
+
+	/*TODO Add gui class for communications*/
+	public msg_client_send(Socket socket, boolean connection, String hostname) {
+		this.socket = socket;
+		this.isConnected = connection;
+		this.hostname = hostname;
+		check = false;
+	}
+
+
+	//TODO All get functions should be sync functions with the gui.
+	// Jank version running for user input until GUI
+	@Override
+	public void run() {
+		try {
+			oos = new ObjectOutputStream(socket.getOutputStream());
+			while (isConnected) {
+				boolean checkFlag = true;
+				if (checkFlag) {
+					Scanner myObj = new Scanner(System.in);
+					int header = 1;
+					String msg = myObj.next();	
+					//System.out.println(msg);
+					String[] hosts = getHostnames();
+					oos.writeInt(header);
+					oos.writeObject(hosts);
+					oos.writeObject(msg);
+
+				} else {
+					//Code for GUI interface for sending
+					while(!getSend_state()) {
+					}
+					int header = getHeader();
+					switch (header) {
+						case 1:
+							String[] hosts = getHostnames();
+							String messge = getMessage();	
+							oos.writeInt(header);
+							oos.writeObject(hosts);
+							oos.writeObject(messge);
+							break;
+						case 2:
+							oos.writeInt(2);
+							break;
+						case 3:
+							oos.writeInt(3);	
+							oos.writeObject(hostname);
+							break;
+						case 4:
+							//Create getter methods for getting this data.
+							String voipReq = "localhost";
+							boolean privF = "false";
+							oos.writeInt(4);
+							oos.writeObject(voipReq);
+							oos.writeObject(privF);
+							break;
+						case 5:
+							oos.writeInt(5);
+							break;
+						case 6:
+							break;
+						case 7:
+							oos.writeInt(header);
+							break;
+						default:
+							System.err.println("Not a valid header type");
+							break;
+					}
+				}
+			}
+		} catch (Exception e) {
+			System.err.println(e);
+		}
+	}
+
+
+
+	public boolean getSend_state() {
+		return check;
+	}
+
+	public String[] getHostnames() {
+		String[] test = {"localhost"};
+		return test;
+	}
+	
+	public String getMessage() {
+		return "Hello World";
+	}
+
+	public int getHeader() {
+		return 1;
+	}
+
+}

@@ -1,0 +1,273 @@
+import java.awt.BorderLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.net.Socket;
+
+import java.net.InetAddress;
+import javax.swing.JButton;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+import javax.swing.filechooser.FileSystemView;
+import javax.swing.*;
+import java.awt.event.*;
+import java.awt.*;
+import java.io.*;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.Observer;
+import java.net.*;
+
+/**
+ * The receiverGUI is the main GUI class for the receiver side which handles all
+ * the GUI related aspects. It also contains the Syncronized methods which allow
+ * for data sharing between threads which is nesseccary for the Progress indicator
+ * to function correctly.
+ *
+ * @author Anthony Durrer and Marc Jevon.
+ * */
+public class receiverGUI extends JFrame {
+
+    private static final long serialVersionUID = 1L;
+    private JLabel lFileLabel;
+    public JProgressBar pProgressBar;
+	private boolean debugF;
+	public int statusG;
+	private int selectionS;
+	private String addr;
+	private int port;
+	private int tcpPort;
+	private int udpPort;
+	private Socket socket;
+
+	/**
+	 * The main method called by other class to start the GUI. This initializes
+	 * the GUI and shows it on the display. It contains the action functions, which
+	 * call the appropriate functions when the user interacts with the GUI.
+	 *
+	 * @param debugF This flag is passed from the main class allowing for control over 
+	 *					if the gui is operating.
+	 */
+    public receiverGUI(boolean debugF) {
+		this.debugF = debugF;
+
+		try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | UnsupportedLookAndFeelException e) {
+            e.printStackTrace();
+        }
+
+        // Create Label for filename and progressbar
+        lFileLabel = new JLabel("No file selected");
+        
+		pProgressBar = new JProgressBar();
+        pProgressBar.setStringPainted(true);
+
+        // Create a file selector button
+        JButton bSelectFolder = new JButton("Select Folder");
+
+        bSelectFolder.addActionListener(new ActionListener() {
+
+            public void actionPerformed(ActionEvent e) {
+
+                SelectFolder();
+				SaveFile();
+            }
+        });
+
+        
+		JFrame frame = new JFrame("Receiver");
+		frame.setSize(400, 250);
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+		// create login panel and add GUI elements
+		JLabel lTCP = new JLabel("TCP Port:");
+		JLabel lRBUDP = new JLabel("RBUDP Port:");
+		JLabel lAddress = new JLabel("Address:");
+		
+		JTextField tTCP = new JTextField();
+		JTextField tRBUDP = new JTextField();
+		JTextField tAddress = new JTextField();
+		
+		JButton bLogin = new JButton("Proceed");
+		
+		JPanel loginPanel = new JPanel();
+
+		frame.add(loginPanel);
+
+		loginPanel.setLayout(null);
+
+		lTCP.setBounds(10, 20, 90, 35);
+		tTCP.setBounds(130, 20, 150, 35);
+		lRBUDP.setBounds(10, 70, 90, 35);
+		tRBUDP.setBounds(130, 70, 150, 35);
+		lAddress.setBounds(10, 120, 90, 35);
+		tAddress.setBounds(130, 120, 150, 35);
+		bLogin.setBounds(150, 170, 100, 40);
+
+		loginPanel.add(lTCP);
+		loginPanel.add(lRBUDP);
+		loginPanel.add(lAddress);
+		loginPanel.add(tTCP);
+		loginPanel.add(tRBUDP);
+		loginPanel.add(tAddress);
+		loginPanel.add(bLogin);
+
+		frame.setVisible(true);
+
+		String selection = "TCP";
+		JButton bSelect = new JButton(selection);
+
+		// Allows for the selection between UDP and TCP transfer.
+        bSelect.addActionListener(new ActionListener() {
+            
+            public void actionPerformed(ActionEvent e) {
+				if (selectionS == 0) {
+					selectionS = 1;
+					bSelect.setText("RUUDP");
+				} else {
+					selectionS = 0;
+					bSelect.setText("TCP");
+				}
+            }
+        // create panel and add GUI elements
+		});
+
+
+		JButton retrans = new JButton("Retranmit");
+
+		retrans.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				SaveFile();
+			}
+		});
+        JPanel panel = new JPanel();
+		panel.setVisible(false);
+		frame.add(panel);
+        panel.add(bSelectFolder);
+		panel.add(bSelect);
+		panel.add(retrans);
+        panel.add(lFileLabel);
+        panel.add(pProgressBar);
+
+		panel.setLayout(null);
+
+		bSelectFolder.setBounds(10, 70, 130, 25);
+		lFileLabel.setBounds(15, 130, 350, 25);
+		bSelect.setBounds(150, 20, 100, 25);
+		retrans.setBounds(10 , 100, 130 , 25);
+		pProgressBar.setBounds(100, 175, 200, 25);
+
+
+		bLogin.addActionListener(new ActionListener() {
+
+			public void actionPerformed(ActionEvent e) {
+
+				String sTCP = tTCP.getText();
+				String sRBUDP = tRBUDP.getText();
+				String sAddress = tAddress.getText();
+
+				if (!sTCP.isEmpty() && !sAddress.isEmpty() && !sRBUDP.isEmpty()) {
+
+					// valid input, hide loginPanel and show main panel
+					addr = sAddress;
+
+						try {
+							tcpPort = Integer.parseInt(sTCP);
+							try {
+								socket = new Socket(InetAddress.getByName(addr), tcpPort);
+							} catch (Exception connectionError) {
+							}
+						} catch (NumberFormatException ex) {
+							JOptionPane.showMessageDialog(frame, "Please enter a valid integer for TCP.");
+							return;
+						}
+
+						try {
+							udpPort = Integer.parseInt(sRBUDP);
+						} catch (NumberFormatException ex) {
+							JOptionPane.showMessageDialog(frame, "Please enter a valid integer for RBUDP.");
+							return;
+						}
+					
+					loginPanel.setVisible(false);
+					panel.setVisible(true);
+
+				} else {
+
+					// invalid input, display error message
+					JOptionPane.showMessageDialog(frame, "Please enter valid input for TCP or RBUDP and Address.");
+				}
+			}
+		});
+    }
+
+	/**
+	 * This method is synchronized which allows for the concurrent updating of 
+	 * the progress bar from other threads.
+	 *
+	 * @param statusIn The value to set the progress bar.
+	 * @return void
+	 * */
+	public synchronized void setStatus(int statusIn) 
+			throws InterruptedException {
+			statusG = statusIn;	
+			pProgressBar.setValue(statusG);
+			notify();
+
+	}
+
+	/**
+	 * Method which opens the file select and writes all the appropriate path variables.
+	 *
+	 * @return void
+	 * */
+	private void SelectFolder() {
+		// create a JFileChooser object and set properties
+		JFileChooser fileChooser = new JFileChooser(FileSystemView.getFileSystemView().getHomeDirectory());
+		fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+
+		// display save dialog and update label
+		int result = fileChooser.showSaveDialog(receiverGUI.this);
+
+		if (result == JFileChooser.APPROVE_OPTION) {
+			// Need to use substring as to remove the selected name as that is defined by the sender.
+			String pathTotal = fileChooser.getSelectedFile().getPath();
+			String dirName = fileChooser.getSelectedFile().getName();
+			lFileLabel.setText(pathTotal.substring(0, (pathTotal.length() - dirName.length())));
+
+		} else {
+			lFileLabel.setText("The user cancelled the operation");
+		}
+	}
+
+	/** 
+	 * Method for calling the threads which allow for the connection and transfer from the sender.
+	 * Uses the user selection for which protocol to use when transfering.
+	 *
+	 * @return void
+	 * */
+	private void SaveFile() {
+		if (selectionS == 0) {
+			try {
+				setStatus(0);
+				TcpReciever tcp = new TcpReciever(socket, true, lFileLabel.getText(), this, debugF);
+				tcp.start();
+			} catch (Exception e) {
+				System.err.println(e);
+			}
+		} else {
+			try {
+				setStatus(0);
+			} catch (Exception e) {
+				System.err.println(e);
+			}
+			System.out.println("Starting UDP");
+			Thread udp = new Thread(new RBUDPReceiver(socket, udpPort, tcpPort, this, debugF, lFileLabel.getText()));
+			udp.start();
+		}
+	}
+}

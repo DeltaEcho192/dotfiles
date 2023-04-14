@@ -1,0 +1,44 @@
+Localhost 
+
+20mb file
+
+Packet size - Time - Rate
+1024 - 0.232 - 83987
+2048 - 0.153 - 127352
+8192 - 0.085 - 229235
+
+// Looks like the ip protocol splitting and reconstruction causes timeouts which have to be retransmitted.
+Roughly the same amount of retransmits but the amount of data is greater which leads to slightly better performance.
+
+16384 - 8.172 - 2384
+32768 - 8.091 - 2408
+63536 - 9.096 - 2142
+
+
+Over Wifi:
+
+20mb file
+
+Packet size - Time - Rate - Timeout/Packet_loop_drop
+1024 - 12.57 - 1546 - 0
+2048 - 6.475 - 3009 - 1
+8192 - 3.884, 2.681 - 5016, 7267,  - 2,63
+16384 - 5.234 - 3722 - 166 
+32768 - 4.775 - 4080 - 139
+// Doesn't work due to most likely to close to ip frag limit or other issue.
+63536 -  - 
+
+Similar conclusion a greater timeout time could be made for the bigger packets to 
+arrive and be reassembled but this is unlikely to help over a network as latency only
+grows, using a smaller middle ground allows for an ompimal like between latency and the
+amount of time it takes to transfer a packet. A faster rewrite in something like C might
+help as the timeout is set for the entire readin of the packet which is most likely easier,
+to speed up with C mem mangement and also better buffer handling and lower level network control.
+
+
+Also to be seen is that on localhost the disk speed is the limiting issue as it can read and send almost as fast as 
+the disk over the local interconnect.
+But over a system like wifi the most likely max speed at the best of time is not more than roughly 30 Mega bytes a second,
+so while our implementaion is not the best it does at least give some reasonable speed at roughly 15% Total throughput. Also it has to 
+read and process on the other side, and read in the file, readout the buffer and also all the other IO handling.
+

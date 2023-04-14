@@ -1,0 +1,272 @@
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.io.InputStream;
+
+public class ServerMsg extends Thread {
+	Socket tcp_socket;
+	private ObjectInputStream ois;
+	private ObjectOutputStream oos;
+	private ArrayList<ServerMsg> threadlist;
+	private ArrayList<String> userList;
+	private serverGUI gui;
+	public String hostname;
+	int client_id_int;
+	public boolean privateCall;
+	public boolean confCall;
+	public String mcCastIP;	
+	public int mcCastPort;
+	
+	ServerMsg(Socket inSocket, ArrayList<ServerMsg> inList, serverGUI gui, String hostname, int id, String mcCastIP, int mcCastPort) {
+		this.tcp_socket = inSocket;
+		this.threadlist = inList;
+		this.gui = gui;
+		this.hostname = hostname;
+		client_id_int = id;
+		this.privateCall = false;
+		this.confCall = false;
+		this.mcCastIP = mcCastIP;
+		this.mcCastPort = mcCastPort;
+	}
+
+	@Override
+	public void run() {
+		try {
+			System.out.println(hostname);
+			boolean connected = true;
+			InputStream in_stream = tcp_socket.getInputStream(); 
+			System.out.println("Inst");
+			ois = new ObjectInputStream(in_stream);
+			System.out.println("Ois");
+			oos = new ObjectOutputStream(tcp_socket.getOutputStream());
+			System.out.println("Oos");
+			System.out.println("Start while");
+			String[] hostnames;
+			String message;
+			String hostnameVoip;
+			int privF;
+			while (connected == true) {
+				int inputMessage = ois.readInt();
+				if (inputMessage != 0) {
+					switch (inputMessage) {
+						case 1:
+							System.out.println("Send Text message to connected users");
+							hostnames = (String[]) ois.readObject();
+							message = (String) ois.readObject();
+							sendMessage(hostnames, message, 1);
+							break;
+						case 2:
+							System.out.println("Send Directory list");
+							collectUsers();
+							sendUsers(true);
+							break;
+						case 3:
+							System.out.println("Connection Host name");
+							hostname = (String) ois.readObject();
+							collectUsers();
+							sendUsers(false);
+							break;
+						case 4:
+							System.out.println("Establish VOIP Connection");
+							hostnameVoip = (String) ois.readObject();
+							privF = ois.readInt();
+							checkCallStat(hostname, privF);
+							break;
+						case 5:
+							System.out.println("Disconnect User");
+							connected = false;
+							break;
+						case 6:
+							System.out.println("File transfer");
+							 hostnames = (String[]) ois.readObject();
+							message = (String) ois.readObject();
+							sendMessage(hostnames, message, 6);
+							break;
+						case 7:
+							System.out.println("VOIP Disconnect");
+							privateCall = false;
+							confCall = false;
+							break;
+						default:
+							System.err.println("Incorrect Header Selection");
+							break;
+					}
+				} else {
+					connected = false;
+					try {
+						oos.close();
+						ois.close();
+						tcp_socket.close();
+					} catch (Exception e) {
+						System.err.println("There has been an error closing streams");
+					}
+				}
+			}
+		} catch (Exception e) {
+			System.err.println(e);
+		} finally {
+			int i;
+			for (i = 0; i < threadlist.size(); i++) {
+				ServerMsg test = threadlist.get(i);
+				if (test.client_id_int == client_id_int) {
+					threadlist.remove(i);
+				}
+			}
+
+			collectUsers();
+			sendUsers(false);
+			System.out.println("Client: " + hostname + " has left");
+			try {
+				oos.close();
+				ois.close();
+				tcp_socket.close();
+			} catch (Exception e) {
+				System.err.println("There has been an error closing streams");
+			}
+		}
+	}
+
+	/* *
+	 * Function to check if a new user has connected to the server if so, then 
+	 * loop through all connected users and add users which are not in the server
+	 * to the list.
+	 * */
+	private void collectUsers() {
+		if ( userList.size() != threadlist.size()) {
+			for (ServerMsg i: threadlist) {
+				if (!userList.contains(i.hostname)) {
+					userList.add(i.hostname);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Function to send teh user list to either only the user requesting the list,
+	 * or to all users when a new user connects or disconnects from the server.
+	 *
+	 * @param IndvF boolean This is a flag to select which send option to use.
+	 * */
+	private void sendUsers(boolean IndvF) {
+		if (IndvF) {
+			try {
+				oos.writeObject(2);
+				oos.writeObject(userList);
+				
+			} catch (Exception e) {
+				System.err.println("There has been an issue sending the userlist, IndvF");
+			}
+		} else {
+			for (ServerMsg i: threadlist) {
+				try {
+					i.oos.writeObject(2);
+					i.oos.writeObject(userList);
+				} catch (Exception e) {
+					System.err.println("There has been an issue sending the userlist");
+				}
+			}
+		}
+	}
+
+	/**
+	 * Function to send a test message to all user hostnames specified. Looping
+	 * through all the conntected users and then checks for matches if it finds
+	 * a match then it will send through the header for message (1), the hostname
+	 * of the user that sent the message. Then the message to be relayed.
+	 *
+	 * @param hostnames String[] An array of all the hostnames to be sent to.
+	 * @param message String A string message to be forwarded to the users.
+	 * */
+	public void sendMessage(String[] hostnames, String message, int header) {
+		System.out.println("Sending msg main:");
+		for (ServerMsg i: threadlist) {
+			System.out.println(i.hostname);
+			for (int x = 0; x < hostnames.length; x++) {
+				if (i.hostname.equals(hostnames[x])) {
+					try {
+						System.out.println("Sending msg");
+						i.oos.writeInt(header);
+						i.oos.writeObject(hostname);
+						i.oos.writeObject(message);
+						
+					} catch (Exception e) {
+						System.err.println("There has been an error sending a message");
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * checkCallStat is called when a user is trying to make a connection with
+	 * another user to start voice communication, it checks if the other user,
+	 * is available for a call, if so it sends the relevent data to both users
+	 * to join multicast sockets.
+	 *
+	 * @param hostnameI The client wished to be connected to,
+	 * @param privF If the requester wants to start a private call.
+	 * */
+	public void checkCallStat(String hostnameI, int privF) {
+		try {
+			for(ServerMsg i: threadlist) {
+				if (i.hostname == hostnameI) {
+					if (!i.privateCall && !i.confCall) {
+						// Completely open
+						// If the requester is on a conf call then send only to the new user.
+						if (confCall) {
+							i.confCall = true;
+							i.oos.writeInt(4);
+							i.oos.writeObject(true);
+							i.oos.writeObject(mcCastIP);
+							i.oos.writeInt(mcCastPort);
+							i.mcCastPort = mcCastPort;
+						} else {
+							mcCastPort += 1;
+							if (privF == 1) {
+								i.oos.writeInt(4);
+								i.oos.writeObject(true);
+								i.privateCall = true;
+								i.oos.writeObject(mcCastIP);
+								i.oos.writeInt(mcCastPort);
+								i.mcCastPort = mcCastPort;
+								oos.writeInt(4);
+								oos.writeObject(true);
+								oos.writeObject(mcCastIP);
+								oos.writeInt(mcCastPort);
+								privF = true;
+							} else {
+								i.confCall = true;
+								i.oos.writeInt(4);
+								i.oos.writeObject(true);
+								i.oos.writeObject(mcCastIP);
+								i.oos.writeInt(mcCastPort);
+								i.mcCastPort = mcCastPort;
+								oos.writeInt(4);
+								oos.writeObject(true);
+								oos.writeObject(mcCastIP);
+								oos.writeInt(mcCastPort);
+								confCall = true;
+							}
+						}
+					} else if (i.privateCall) {
+						// On A private call
+						oos.writeInt(4);
+						oos.writeObject(false);
+					} else if (!i.privateCall && i.confCall) {
+						// On a conference call
+						oos.writeInt(4);
+						oos.writeObject(true);
+						oos.writeObject(i.mcCastIP);
+						oos.writeInt(i.mcCastPort);
+						mcCastPort = i.mcCastPort;
+						confCall = true;
+					}
+				}
+			}
+		} catch (Exception e) {
+			System.err.println(e);
+			System.err.println("There has been an error making a voip connection");
+		}
+	}
+}

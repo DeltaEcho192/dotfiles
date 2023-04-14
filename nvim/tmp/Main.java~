@@ -1,0 +1,35 @@
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket; 
+import java.net.*;
+import java.io.File;
+import java.util.ArrayList;
+
+
+public class Main {
+
+	public static void main(String[] args) throws Exception {
+		try {
+			boolean debugF = Boolean.parseBoolean(args[0]);
+			int tcp_port = Integer.parseInt(args[1]);		
+			String voipIp = args[2];
+			int voipPort = 20200;
+			if (debugF == true) {
+				int counter = 0;
+				ServerSocket msgServer = new ServerSocket(tcp_port);
+				System.out.println("Server booted on port: " + tcp_port);
+				ArrayList<ServerMsg> msgList = new ArrayList<>();
+				while (true) {
+					Socket tcpConnection = msgServer.accept();
+					System.out.println("New Client has connected");
+					ServerMsg msg = new ServerMsg(tcpConnection, msgList, null, "localhost", counter);
+					msgList.add(msg);
+					msg.start();
+					counter += 1;
+				}
+			}
+		} catch (Exception e) {
+			System.err.println(e);
+		}
+	}
+}
