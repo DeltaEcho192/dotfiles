@@ -1,3 +1,0 @@
-#!/bin/bash
-./omp_scope 4 2 1
-./omp_scope 4 2 0
