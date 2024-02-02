@@ -3,6 +3,11 @@ This repo contains my personal dotfiles and configurations for my personal syste
 It uses stow to symlink the directory and files to the original location while being
 able to manage the dotfiles efficiently. For reference a video [Dotfiles Stow](https://www.youtube.com/watch?v=y6XCebnB9gs)
 
+## Usage
+To use the repo clone the repo into the `$HOME` directory then enter the directory
+and execute the command `stow --adopt .`. This will create all the required simlinks
+in the parent directory allowing for easy transfer and setup of configs.
+
 ## Mac Version
 The main branch contains the dotfiles for my personal MacOS setup and is slightly
 different to my linux setup.
