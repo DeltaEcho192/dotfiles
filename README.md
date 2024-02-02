@@ -23,3 +23,18 @@ to be installed when using the configs to allow for proper functionality.
 - Tmux (Terminal Multiplexer)
 - Nerd Font (Terminal Font)
 - lazygit (Terminal git manager)
+
+## Linux Version
+The second branch `linux` contains all the configurations required for my personal
+Arch linux setup.
+
+### Important Plugins and Tools
+This is a list of important plugins and tools that are used and some are required
+to be installed when using the configs to allow for proper functionality. All the 
+previous plugins are still required with a few extra.
+
+- rofi (Spotlight Search)
+- polybar (Upgraded status bar)
+- i3 (Window Manager)
+- btop (System Monitoring)
+- Thunar (File manager)
