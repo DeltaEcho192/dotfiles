@@ -28,6 +28,8 @@ to be installed when using the configs to allow for proper functionality.
 - Tmux (Terminal Multiplexer)
 - Nerd Font (Terminal Font)
 - lazygit (Terminal git manager)
+- JQ (Json Parsing)
+- CPDF (PDF combine and handling)
 
 ## Linux Version
 The second branch `linux` contains all the configurations required for my personal
