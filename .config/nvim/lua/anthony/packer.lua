@@ -42,4 +42,11 @@ use("christoomey/vim-tmux-navigator")
 use {'lervag/vimtex'}
 -- packer.nvim
 use { 'smithbm2316/centerpad.nvim' }
+
+use {
+  "max397574/better-escape.nvim",
+  config = function()
+    require("better_escape").setup()
+  end,
+}
 end)
