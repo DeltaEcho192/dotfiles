@@ -104,3 +104,4 @@ alias gcc="gcc-11"
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 alias lg='lazygit'
 alias cdd='cd ; cd $(fd -E Library --type d | fzf)'
+alias cat='bat'
