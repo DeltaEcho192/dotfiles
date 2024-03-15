@@ -15,8 +15,14 @@ use 'wbthomason/packer.nvim'
 			vim.cmd("colorscheme catppuccin")
 			end
 		})
+
 use('nvim-treesitter/nvim-treesitter', {run = ':TSUpdate'})
-use('ThePrimeagen/harpoon')
+
+use("nvim-lua/plenary.nvim")
+use({'ThePrimeagen/harpoon',
+	branch = "harpoon2",
+	requires = {{ "nvim-lua/plenary.nvim" }} 
+})
 use {
 	'VonHeikemen/lsp-zero.nvim',
 	requires = {
