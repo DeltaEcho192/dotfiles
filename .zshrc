@@ -103,5 +103,10 @@ alias gcc="gcc-11"
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 alias lg='lazygit'
+
+# Fuzzy finding to change directories on a system
 alias cdd='cd ; cd $(fd -E Library --type d | fzf)'
 alias cat='bat'
+# Allows for a nice tree output with hidden files without
+# showing all the git files in a directory which is a repo
+alias treehid='tree -I '.git' -a -C'
