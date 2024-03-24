@@ -99,7 +99,6 @@ source $ZSH/oh-my-zsh.sh
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
-alias gcc="gcc-11"
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 alias lg='lazygit'
@@ -110,3 +109,4 @@ alias cat='bat'
 # Allows for a nice tree output with hidden files without
 # showing all the git files in a directory which is a repo
 alias treehid='tree -I '.git' -a -C'
+alias v='nvim'
