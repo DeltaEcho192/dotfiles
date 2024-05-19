@@ -16,6 +16,7 @@ return {
     config = true,
   },
 
+	--[[
   -- Autocompletion
   {
     'hrsh7th/nvim-cmp',
@@ -45,39 +46,30 @@ return {
       })
     end
   },
-
+	]]
   -- LSP
   {
     'neovim/nvim-lspconfig',
     cmd = {'LspInfo', 'LspInstall', 'LspStart'},
     event = {'BufReadPre', 'BufNewFile'},
     dependencies = {
-      {'hrsh7th/cmp-nvim-lsp'},
+      {'ms-jpq/coq_nvim'},
+      {'ms-jpq/coq.artifacts'},
       {'williamboman/mason-lspconfig.nvim'},
     },
-    config = function()
-      -- This is where all the LSP shenanigans will live
-      local lsp_zero = require('lsp-zero')
-      lsp_zero.extend_lspconfig()
+		config = function ()
+			vim.cmd([[ let g:coq_settings = { 'auto_start': 'shut-up', 'keymap.pre_select': v:true}]])
+			local lsp_zero = require('lsp-zero')
+			require('mason').setup({});
+			require('mason-lspconfig').setup({})
+			local coq = require("coq")
 
-      --- if you want to know more about lsp-zero and mason.nvim
-      --- read this: https://github.com/VonHeikemen/lsp-zero.nvim/blob/v3.x/doc/md/guides/integrate-with-mason-nvim.md
-      lsp_zero.on_attach(function(client, bufnr)
-        -- see :help lsp-zero-keybindings
-        -- to learn the available actions
-        lsp_zero.default_keymaps({buffer = bufnr})
-      end)
-
-      require('mason-lspconfig').setup({
-        ensure_installed = {},
-        handlers = {
-          lsp_zero.default_setup,
-          lua_ls = function()
-            local lua_opts = lsp_zero.nvim_lua_ls()
-            require('lspconfig').lua_ls.setup(lua_opts)
-          end,
-        }
-      })
-    end
+			lsp_zero.on_attach(function(client, bufnr)
+				lsp_zero.default_keymaps({buffer = bufnr})
+			end)
+			require('lspconfig').lua_ls.setup(coq.lsp_ensure_capabilities({}))
+			require('lspconfig').clangd.setup(coq.lsp_ensure_capabilities({}))
+			require('lspconfig').rust_analyzer.setup(coq.lsp_ensure_capabilities({}))
+		end
   }
 }
