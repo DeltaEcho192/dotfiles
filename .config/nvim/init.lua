@@ -12,4 +12,6 @@ if not vim.loop.fs_stat(lazypath) then
   })
 end
 vim.opt.rtp:prepend(lazypath)
+vim.o.termguicolors = true
+vim.g.vimtex_view_method='zathura'
 require("lazy").setup("plugins")
