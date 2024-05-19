@@ -8,9 +8,9 @@ To use the repo clone the repo into the `$HOME` directory then enter the directo
 and execute the command `stow --adopt .`. This will create all the required simlinks
 in the parent directory allowing for easy transfer and setup of configs.
 
-## Mac Version
-The main branch contains the dotfiles for my personal MacOS setup and is slightly
-different to my linux setup.
+## Linux Version
+The main branch contains the dotfiles for my personal Linux setup and is slightly
+different to my macos setup.
 
 ### Important Plugins and Tools
 This is a list of important plugins and tools that are used and some are required
@@ -31,17 +31,18 @@ to be installed when using the configs to allow for proper functionality.
 - JQ (Json Parsing)
 - CPDF (PDF combine and handling)
 
-## Linux Version
-The second branch `linux` contains all the configurations required for my personal
-Arch linux setup.
-
 ### Important Plugins and Tools
-This is a list of important plugins and tools that are used and some are required
-to be installed when using the configs to allow for proper functionality. All the 
-previous plugins are still required with a few extra.
+    This is a list of important plugins and tools that are used and some are required
+    to be installed when using the configs to allow for proper functionality. All the 
+    previous plugins are still required with a few extra.
 
-- rofi (Spotlight Search)
-- polybar (Upgraded status bar)
-- i3 (Window Manager)
-- btop (System Monitoring)
+    - rofi (Spotlight Search)
+    - polybar (Upgraded status bar)
+    - i3 (Window Manager)
+    - btop (System Monitoring)
 - Thunar (File manager)
+
+## Macos Version
+The second branch `macos` contains all the configurations required for my personal
+mac laptop setup.
+
