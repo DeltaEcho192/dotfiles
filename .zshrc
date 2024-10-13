@@ -79,7 +79,7 @@ source $ZSH/oh-my-zsh.sh
 # export MANPATH="/usr/local/man:$MANPATH"
 
 # You may need to manually set your language environment
-export LANG=en_ZA.UTF-8
+export LANG=en_US.UTF-8
 
 # Preferred editor for local and remote sessions
 # if [[ -n $SSH_CONNECTION ]]; then
@@ -106,7 +106,6 @@ alias lg='lazygit'
 
 # Fuzzy finding to change directories on a system
 alias cdd='cd; cd $(fd --type d | fzf)'
-alias cat='bat'
 # Allows for a nice tree output with hidden files without
 # showing all the git files in a directory which is a repo
 alias treehid='tree -I '.git' -a -C'
