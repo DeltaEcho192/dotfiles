@@ -46,3 +46,9 @@ to be installed when using the configs to allow for proper functionality.
 The second branch `macos` contains all the configurations required for my personal
 mac laptop setup.
 
+# TODO
+- Update README
+- Work on fzf searching in terminal
+- Work on color scheme
+- Add LSP to nvim config with C++ setup
+- Setup up backup system

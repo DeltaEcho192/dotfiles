@@ -23,7 +23,7 @@ set $menu "rofi -combi-modi window,drun,ssh,run -show combi -show-icons"
 ### Output configuration
 #
 # Default wallpaper (more resolutions are available in /usr/share/backgrounds/sway/)
-output * bg /usr/share/backgrounds/sway/typhoon.jpeg fill
+output * bg /usr/share/backgrounds/sway/torando1.jpg fill
 #
 # Example configuration:
 #
