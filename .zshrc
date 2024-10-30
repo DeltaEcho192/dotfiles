@@ -100,7 +100,7 @@ export LANG=en_US.UTF-8
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+[ -f ~/.fzf-key-bindings.zsh ] && source ~/.fzf-key-bindings.zsh
 neofetch
 alias lg='lazygit'
 
