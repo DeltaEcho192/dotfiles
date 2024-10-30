@@ -52,3 +52,9 @@ mac laptop setup.
 - Work on color scheme
 - Add LSP to nvim config with C++ setup
 - Setup up backup system
+
+# GTK Theme
+{https://github.com/Fausto-Korpsvart/Gruvbox-GTK-Theme?tab=readme-ov-file}[GTK theme]
+
+and to apply it use the install script and then the following command.
+`gsettings set org.gnome.desktop.interface gtk-theme Grubbox-Dark`
