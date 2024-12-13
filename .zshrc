@@ -110,3 +110,4 @@ alias cdd='cd; cd $(fd --type d | fzf)'
 # showing all the git files in a directory which is a repo
 alias treehid='tree -I '.git' -a -C'
 alias v='nvim'
+export GPG_TTY=$(tty)
