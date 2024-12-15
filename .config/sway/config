@@ -218,4 +218,8 @@ default_floating_border none
 #        inactive_workspace #32323200 #32323200 #5c5c5c
 #    }
 #}
+input "type:keyboard" {
+	xkb_options caps:escape
+}
+
 include /etc/sway/config.d/*
