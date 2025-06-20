@@ -14,7 +14,7 @@ set $down j
 set $up k
 set $right l
 # Your preferred terminal emulator
-set $term kitty
+set $term ghostty
 # Your preferred application launcher
 # Note: pass the final command to swaymsg so that the resulting window can be opened
 # on the original workspace that the command was run on.
@@ -23,7 +23,7 @@ set $menu "rofi -combi-modi window,drun,ssh,run -show combi -show-icons"
 ### Output configuration
 #
 # Default wallpaper (more resolutions are available in /usr/share/backgrounds/sway/)
-output DP-2 resolution 3440x1440@144Hz bg /usr/share/backgrounds/sway/mojave_wallpaper.jpg fill
+output DP-2 resolution 3440x1440@144Hz bg /usr/share/backgrounds/sway/oregon_coastline.jpeg fill
 #
 # Example configuration:
 #

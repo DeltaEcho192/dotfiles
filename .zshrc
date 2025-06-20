@@ -99,9 +99,21 @@ export LANG=en_US.UTF-8
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
+export today="$(date +%F)"
+function encrypt {  # list preferred id last
+	output="${HOME}/$(basename ${1}).${today}.enc"
+	gpg --armor --encrypt \
+		--output "${output}" \
+		-r "anthony@durrer.pro" \
+		"${1}" && echo "${1} -> ${output}" }
+
+  function reveal {
+	  output=$(echo "${1}" | rev | cut -c16- | rev)
+	  gpg --decrypt --output ${output} "${1}" \
+		  && echo "${1} -> ${output}" }
 
 [ -f ~/.fzf-key-bindings.zsh ] && source ~/.fzf-key-bindings.zsh
-neofetch
+fastfetch
 alias lg='lazygit'
 
 # Fuzzy finding to change directories on a system
@@ -110,4 +122,7 @@ alias cdd='cd; cd $(fd --type d | fzf)'
 # showing all the git files in a directory which is a repo
 alias treehid='tree -I '.git' -a -C'
 alias v='nvim'
+alias cdg='cd /home/anthony/Dev/GrapheneOS'
 export GPG_TTY=$(tty)
+export PATH=$PATH:/home/anthony/.cargo/bin
+export PATH=$PATH:/home/anthony/HandInstall/zig-0.13.0
