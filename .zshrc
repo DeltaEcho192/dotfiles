@@ -126,3 +126,7 @@ alias cdg='cd /home/anthony/Dev/GrapheneOS'
 export GPG_TTY=$(tty)
 export PATH=$PATH:/home/anthony/.cargo/bin
 export PATH=$PATH:/home/anthony/HandInstall/zig-0.13.0
+
+autoload bashcompinit
+bashcompinit
+alias ofoam="source ${FOAM_INST_DIR}/OpenFOAM-12/etc/bashrc"

@@ -7,7 +7,7 @@
     // "custom/gpu",  "custom/weather","sway/window", "custom/gpu",  "custom/media",  
     // Choose the order of the modules
 
-    "modules-left": ["clock#date", "sway/language", "custom/arrow1",
+    "modules-left": ["clock#date", "sway/language", "custom/lock", "custom/arrow1",
 	"custom/pacman", "custom/arrow3",  "custom/playerctl"],
     "modules-center": ["sway/workspaces"],
     "modules-right": ["custom/arrow6",  "custom/arrow7",  "temperature", "cpu", "custom/gpu", "custom/arrow8", "network", "bluetooth", "pulseaudio", "tray"],
@@ -153,6 +153,10 @@
         "max-length": 5,
         "min-length": 2
     },
+	"custom/lock": {
+        "format": "🔒 ",
+        "on-click": "swaylock -i /usr/share/backgrounds/sway/grand_canyon_river_valley_1.jpeg", // update system
+	},
     "custom/weather": {
         "exec": "curl 'https://wttr.in/?format=1'",
         "interval": 3600
